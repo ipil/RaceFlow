@@ -15,6 +15,24 @@ function updateWaveField(
   return waves.map((wave) => (wave.id === waveId ? { ...wave, [key]: value } : wave));
 }
 
+const KM_PER_MILE = 1.609344;
+const MINUTE_OPTIONS = Array.from({ length: 17 }, (_, i) => i + 4);
+const SECOND_OPTIONS = Array.from({ length: 60 }, (_, i) => i);
+
+function secPerKmToMinMile(secPerKm: number): { minutes: number; seconds: number } {
+  const secPerMile = Math.max(60, Math.round(secPerKm * KM_PER_MILE));
+  return {
+    minutes: Math.floor(secPerMile / 60),
+    seconds: secPerMile % 60,
+  };
+}
+
+function minMileToSecPerKm(minutes: number, seconds: number): number {
+  const clampedSeconds = Math.max(0, Math.min(59, seconds));
+  const secPerMile = Math.max(60, minutes * 60 + clampedSeconds);
+  return secPerMile / KM_PER_MILE;
+}
+
 export default function WaveEditor({ waves, setWaves, onGenerateRunners }: WaveEditorProps) {
   const addWave = () => {
     const nextId = `wave-${waves.length + 1}`;
@@ -38,9 +56,13 @@ export default function WaveEditor({ waves, setWaves, onGenerateRunners }: WaveE
     <div className="panel">
       <h2>Wave Editor</h2>
       <div className="waves-list">
-        {waves.map((wave) => (
-          <div key={wave.id} className="wave-card">
-            <strong>{wave.id}</strong>
+        {waves.map((wave) => {
+          const minPace = secPerKmToMinMile(wave.minPaceSecPerKm);
+          const maxPace = secPerKmToMinMile(wave.maxPaceSecPerKm);
+
+          return (
+            <div key={wave.id} className="wave-card">
+              <strong>{wave.id}</strong>
             <div className="row">
               <label>Start (sec)</label>
               <input
@@ -66,28 +88,94 @@ export default function WaveEditor({ waves, setWaves, onGenerateRunners }: WaveE
               />
             </div>
             <div className="row">
-              <label>Min pace (sec/km)</label>
-              <input
-                type="number"
-                value={wave.minPaceSecPerKm}
-                min={60}
-                step={1}
-                onChange={(e) =>
-                  setWaves(updateWaveField(waves, wave.id, 'minPaceSecPerKm', Number(e.target.value)))
-                }
-              />
+              <label>Min pace (min/mile)</label>
+              <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+                <select
+                  aria-label={`${wave.id} min pace minutes`}
+                  value={minPace.minutes}
+                  onChange={(e) =>
+                    setWaves(
+                      updateWaveField(
+                        waves,
+                        wave.id,
+                        'minPaceSecPerKm',
+                        minMileToSecPerKm(Number(e.target.value), minPace.seconds),
+                      ),
+                    )
+                  }
+                >
+                  {MINUTE_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes} min
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label={`${wave.id} min pace seconds`}
+                  value={minPace.seconds}
+                  onChange={(e) =>
+                    setWaves(
+                      updateWaveField(
+                        waves,
+                        wave.id,
+                        'minPaceSecPerKm',
+                        minMileToSecPerKm(minPace.minutes, Number(e.target.value)),
+                      ),
+                    )
+                  }
+                >
+                  {SECOND_OPTIONS.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {String(seconds).padStart(2, '0')} sec
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="row">
-              <label>Max pace (sec/km)</label>
-              <input
-                type="number"
-                value={wave.maxPaceSecPerKm}
-                min={60}
-                step={1}
-                onChange={(e) =>
-                  setWaves(updateWaveField(waves, wave.id, 'maxPaceSecPerKm', Number(e.target.value)))
-                }
-              />
+              <label>Max pace (min/mile)</label>
+              <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+                <select
+                  aria-label={`${wave.id} max pace minutes`}
+                  value={maxPace.minutes}
+                  onChange={(e) =>
+                    setWaves(
+                      updateWaveField(
+                        waves,
+                        wave.id,
+                        'maxPaceSecPerKm',
+                        minMileToSecPerKm(Number(e.target.value), maxPace.seconds),
+                      ),
+                    )
+                  }
+                >
+                  {MINUTE_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes} min
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label={`${wave.id} max pace seconds`}
+                  value={maxPace.seconds}
+                  onChange={(e) =>
+                    setWaves(
+                      updateWaveField(
+                        waves,
+                        wave.id,
+                        'maxPaceSecPerKm',
+                        minMileToSecPerKm(maxPace.minutes, Number(e.target.value)),
+                      ),
+                    )
+                  }
+                >
+                  {SECOND_OPTIONS.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {String(seconds).padStart(2, '0')} sec
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <button
               type="button"
@@ -96,8 +184,9 @@ export default function WaveEditor({ waves, setWaves, onGenerateRunners }: WaveE
             >
               Remove
             </button>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
       <div className="row">
         <button type="button" onClick={addWave}>
