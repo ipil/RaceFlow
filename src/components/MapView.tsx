@@ -43,7 +43,7 @@ export default function MapView({
   const smoothBinsRef = useRef<Float32Array>(new Float32Array(0));
   const densityPerRunnerRef = useRef<Float32Array>(new Float32Array(0));
 
-  const binSize = 50;
+  const binSize = 10;
 
   useEffect(() => {
     if (!mapRootRef.current || mapRef.current) return;
@@ -132,7 +132,6 @@ export default function MapView({
         bins[idx] += 1;
       }
 
-      let maxDensity = 1;
       if (smoothNeighborBins) {
         for (let i = 0; i < binCount; i += 1) {
           const left = i > 0 ? bins[i - 1] : bins[i];
@@ -140,7 +139,6 @@ export default function MapView({
           const right = i < binCount - 1 ? bins[i + 1] : bins[i];
           const smoothed = (left + center + right) / 3;
           smoothBins[i] = smoothed;
-          if (smoothed > maxDensity) maxDensity = smoothed;
         }
 
         for (let i = 0; i < runnerCount; i += 1) {
@@ -150,7 +148,6 @@ export default function MapView({
         for (let i = 0; i < runnerCount; i += 1) {
           const density = bins[binIdxs[i]];
           densityPerRunner[i] = density;
-          if (density > maxDensity) maxDensity = density;
         }
       }
 
@@ -158,7 +155,7 @@ export default function MapView({
       for (let i = 0; i < runnerCount; i += 1) {
         const pos = positionAtDistance(routeData.points, routeData.cumdist, distances[i]);
         const pt = map.latLngToContainerPoint([pos.lat, pos.lng]);
-        const norm = densityPerRunner[i] / maxDensity;
+        const norm = (densityPerRunner[i] - 1) / 9;
 
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 2.7, 0, Math.PI * 2);

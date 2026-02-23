@@ -53,7 +53,7 @@ export function runnerDistanceMeters(
 
 export function densityBins(
   distances: number[],
-  binSize = 50,
+  binSize = 10,
   smoothNeighborBins = true,
 ): number[] {
   if (distances.length === 0) return [];
