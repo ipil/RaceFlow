@@ -15,7 +15,6 @@ type MapViewProps = {
   routeData: RouteData | null;
   runners: Runner[];
   simTime: number;
-  smoothNeighborBins?: boolean;
 };
 
 function densityToColor(norm: number): string {
@@ -30,7 +29,6 @@ export default function MapView({
   routeData,
   runners,
   simTime,
-  smoothNeighborBins = true,
 }: MapViewProps) {
   const mapRootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -38,12 +36,13 @@ export default function MapView({
   const routeLayerRef = useRef<L.Polyline | null>(null);
 
   const distancesRef = useRef<Float64Array>(new Float64Array(0));
-  const binIdxRef = useRef<Uint16Array>(new Uint16Array(0));
-  const binsRef = useRef<Uint16Array>(new Uint16Array(0));
-  const smoothBinsRef = useRef<Float32Array>(new Float32Array(0));
+  const latRef = useRef<Float64Array>(new Float64Array(0));
+  const lngRef = useRef<Float64Array>(new Float64Array(0));
+  const xMetersRef = useRef<Float64Array>(new Float64Array(0));
+  const yMetersRef = useRef<Float64Array>(new Float64Array(0));
   const densityPerRunnerRef = useRef<Float32Array>(new Float32Array(0));
 
-  const binSize = 10;
+  const densityRadiusMeters = 5;
 
   useEffect(() => {
     if (!mapRootRef.current || mapRef.current) return;
@@ -105,56 +104,56 @@ export default function MapView({
       }
 
       const runnerCount = runners.length;
-      const binCount = Math.max(1, Math.floor(routeData.total / binSize) + 1);
 
       if (distancesRef.current.length < runnerCount) {
         distancesRef.current = new Float64Array(runnerCount);
-        binIdxRef.current = new Uint16Array(runnerCount);
+        latRef.current = new Float64Array(runnerCount);
+        lngRef.current = new Float64Array(runnerCount);
+        xMetersRef.current = new Float64Array(runnerCount);
+        yMetersRef.current = new Float64Array(runnerCount);
         densityPerRunnerRef.current = new Float32Array(runnerCount);
-      }
-      if (binsRef.current.length !== binCount) {
-        binsRef.current = new Uint16Array(binCount);
-        smoothBinsRef.current = new Float32Array(binCount);
       }
 
       const distances = distancesRef.current;
-      const binIdxs = binIdxRef.current;
-      const bins = binsRef.current;
-      const smoothBins = smoothBinsRef.current;
+      const lats = latRef.current;
+      const lngs = lngRef.current;
+      const xs = xMetersRef.current;
+      const ys = yMetersRef.current;
       const densityPerRunner = densityPerRunnerRef.current;
-      bins.fill(0);
+      const radiusSq = densityRadiusMeters * densityRadiusMeters;
+      const earthRadiusM = 6371000;
+      const refLatRad = (routeData.points[0].lat * Math.PI) / 180;
+      const cosRefLat = Math.cos(refLatRad);
 
       for (let i = 0; i < runnerCount; i += 1) {
         const d = runnerDistanceMeters(runners[i], simTime, routeData.total);
         distances[i] = d;
-        const idx = Math.min(binCount - 1, Math.max(0, Math.floor(d / binSize)));
-        binIdxs[i] = idx;
-        bins[idx] += 1;
+        const pos = positionAtDistance(routeData.points, routeData.cumdist, d);
+        lats[i] = pos.lat;
+        lngs[i] = pos.lng;
+        const latRad = (pos.lat * Math.PI) / 180;
+        const lngRad = (pos.lng * Math.PI) / 180;
+        xs[i] = earthRadiusM * lngRad * cosRefLat;
+        ys[i] = earthRadiusM * latRad;
+        densityPerRunner[i] = 1;
       }
 
-      if (smoothNeighborBins) {
-        for (let i = 0; i < binCount; i += 1) {
-          const left = i > 0 ? bins[i - 1] : bins[i];
-          const center = bins[i];
-          const right = i < binCount - 1 ? bins[i + 1] : bins[i];
-          const smoothed = (left + center + right) / 3;
-          smoothBins[i] = smoothed;
-        }
-
-        for (let i = 0; i < runnerCount; i += 1) {
-          densityPerRunner[i] = smoothBins[binIdxs[i]];
-        }
-      } else {
-        for (let i = 0; i < runnerCount; i += 1) {
-          const density = bins[binIdxs[i]];
-          densityPerRunner[i] = density;
+      for (let i = 0; i < runnerCount; i += 1) {
+        const xi = xs[i];
+        const yi = ys[i];
+        for (let j = i + 1; j < runnerCount; j += 1) {
+          const dx = xi - xs[j];
+          const dy = yi - ys[j];
+          if (dx * dx + dy * dy <= radiusSq) {
+            densityPerRunner[i] += 1;
+            densityPerRunner[j] += 1;
+          }
         }
       }
 
       ctx.globalAlpha = 0.92;
       for (let i = 0; i < runnerCount; i += 1) {
-        const pos = positionAtDistance(routeData.points, routeData.cumdist, distances[i]);
-        const pt = map.latLngToContainerPoint([pos.lat, pos.lng]);
+        const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
         const norm = (densityPerRunner[i] - 1) / 9;
 
         ctx.beginPath();
@@ -164,7 +163,7 @@ export default function MapView({
       }
       ctx.globalAlpha = 1;
     };
-  }, [routeData, runners, simTime, smoothNeighborBins]);
+  }, [routeData, runners, simTime]);
 
   useEffect(() => {
     const map = mapRef.current;
