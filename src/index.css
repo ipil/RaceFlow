@@ -1,0 +1,133 @@
+:root {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.4;
+  color: #13222f;
+  background: #f1f5f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  padding: 16px;
+  background: #ffffff;
+  border-right: 1px solid #d4dbe3;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+}
+
+.panel {
+  border: 1px solid #d4dbe3;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fbfdff;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.row label {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.row input,
+.row select {
+  width: 100%;
+}
+
+.waves-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wave-card {
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+}
+
+.map-wrap {
+  position: relative;
+}
+
+.map-root {
+  width: 100%;
+  height: 100vh;
+}
+
+.overlay-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 450;
+  pointer-events: none;
+}
+
+.legend {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 500;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d4dbe3;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.8rem;
+}
+
+.legend-bar {
+  width: 130px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2b83ba, #abdda4, #fdae61, #d7191c);
+  margin: 4px 0;
+}
+
+.controls-time {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 960px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 60vh;
+  }
+
+  .map-root {
+    height: 60vh;
+  }
+}

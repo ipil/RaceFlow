@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RaceFlow" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>RaceFlow Sample Route</name>
+    <trkseg>
+      <trkpt lat="37.8044" lon="-122.2711"></trkpt>
+      <trkpt lat="37.8052" lon="-122.2690"></trkpt>
+      <trkpt lat="37.8065" lon="-122.2668"></trkpt>
+      <trkpt lat="37.8078" lon="-122.2647"></trkpt>
+      <trkpt lat="37.8093" lon="-122.2629"></trkpt>
+      <trkpt lat="37.8107" lon="-122.2614"></trkpt>
+      <trkpt lat="37.8122" lon="-122.2601"></trkpt>
+      <trkpt lat="37.8138" lon="-122.2592"></trkpt>
+      <trkpt lat="37.8154" lon="-122.2586"></trkpt>
+      <trkpt lat="37.8170" lon="-122.2584"></trkpt>
+      <trkpt lat="37.8187" lon="-122.2586"></trkpt>
+      <trkpt lat="37.8203" lon="-122.2593"></trkpt>
+      <trkpt lat="37.8218" lon="-122.2605"></trkpt>
+      <trkpt lat="37.8231" lon="-122.2621"></trkpt>
+      <trkpt lat="37.8242" lon="-122.2641"></trkpt>
+      <trkpt lat="37.8251" lon="-122.2663"></trkpt>
+      <trkpt lat="37.8258" lon="-122.2686"></trkpt>
+      <trkpt lat="37.8262" lon="-122.2710"></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
