@@ -15,6 +15,8 @@ type MapViewProps = {
   routeData: RouteData | null;
   runners: Runner[];
   simTime: number;
+  densityRadiusMeters: number;
+  maxDensityColorValue: number;
 };
 
 function densityToColor(norm: number): string {
@@ -29,6 +31,8 @@ export default function MapView({
   routeData,
   runners,
   simTime,
+  densityRadiusMeters,
+  maxDensityColorValue,
 }: MapViewProps) {
   const mapRootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -41,8 +45,6 @@ export default function MapView({
   const xMetersRef = useRef<Float64Array>(new Float64Array(0));
   const yMetersRef = useRef<Float64Array>(new Float64Array(0));
   const densityPerRunnerRef = useRef<Float32Array>(new Float32Array(0));
-
-  const densityRadiusMeters = 5;
 
   useEffect(() => {
     if (!mapRootRef.current || mapRef.current) return;
@@ -154,7 +156,8 @@ export default function MapView({
       ctx.globalAlpha = 0.92;
       for (let i = 0; i < runnerCount; i += 1) {
         const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
-        const norm = (densityPerRunner[i] - 1) / 9;
+        const denom = Math.max(1, maxDensityColorValue - 1);
+        const norm = (densityPerRunner[i] - 1) / denom;
 
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 2.7, 0, Math.PI * 2);
@@ -163,7 +166,7 @@ export default function MapView({
       }
       ctx.globalAlpha = 1;
     };
-  }, [routeData, runners, simTime]);
+  }, [routeData, runners, simTime, densityRadiusMeters, maxDensityColorValue]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -190,8 +193,8 @@ export default function MapView({
         <div><strong>Runner Density</strong></div>
         <div className="legend-bar" />
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Low</span>
-          <span>High</span>
+          <span>1 runner</span>
+          <span>{maxDensityColorValue} runners</span>
         </div>
       </div>
     </div>

@@ -5,10 +5,14 @@ type ControlsProps = {
   maxTime: number;
   playing: boolean;
   speed: number;
+  densityRadiusMeters: number;
+  maxDensityColorValue: number;
   onPlayPause: () => void;
   onReset: () => void;
   onTimeChange: (time: number) => void;
   onSpeedChange: (speed: number) => void;
+  onDensityRadiusChange: (radius: number) => void;
+  onMaxDensityColorValueChange: (value: number) => void;
 };
 
 const SPEEDS = [
@@ -28,10 +32,14 @@ export default function Controls({
   maxTime,
   playing,
   speed,
+  densityRadiusMeters,
+  maxDensityColorValue,
   onPlayPause,
   onReset,
   onTimeChange,
   onSpeedChange,
+  onDensityRadiusChange,
+  onMaxDensityColorValueChange,
 }: ControlsProps) {
   const timeLabel = useMemo(() => formatTime(simTime), [simTime]);
 
@@ -74,6 +82,30 @@ export default function Controls({
             </option>
           ))}
         </select>
+      </div>
+      <div className="row">
+        <label htmlFor="density-radius">Density radius (m)</label>
+        <input
+          id="density-radius"
+          type="number"
+          min={2}
+          max={20}
+          step={1}
+          value={densityRadiusMeters}
+          onChange={(e) => onDensityRadiusChange(Number(e.target.value))}
+        />
+      </div>
+      <div className="row">
+        <label htmlFor="max-density-color">Max density color (runners)</label>
+        <input
+          id="max-density-color"
+          type="number"
+          min={1}
+          max={200}
+          step={1}
+          value={maxDensityColorValue}
+          onChange={(e) => onMaxDensityColorValueChange(Number(e.target.value))}
+        />
       </div>
     </div>
   );

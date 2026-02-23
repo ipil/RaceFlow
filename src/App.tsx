@@ -54,6 +54,8 @@ export default function App() {
   const [simTime, setSimTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [densityRadiusMeters, setDensityRadiusMeters] = useState(5);
+  const [maxDensityColorValue, setMaxDensityColorValue] = useState(10);
   const [error, setError] = useState<string | null>(null);
 
   const rafRef = useRef<number | null>(null);
@@ -188,6 +190,8 @@ export default function App() {
           maxTime={maxTime}
           playing={playing}
           speed={speed}
+          densityRadiusMeters={densityRadiusMeters}
+          maxDensityColorValue={maxDensityColorValue}
           onPlayPause={onPlayPause}
           onReset={() => {
             setPlaying(false);
@@ -198,6 +202,14 @@ export default function App() {
             setSimTime(Math.max(0, Math.min(maxTime, t)));
           }}
           onSpeedChange={(s) => setSpeed(s)}
+          onDensityRadiusChange={(radius) => {
+            if (!Number.isFinite(radius)) return;
+            setDensityRadiusMeters(Math.max(2, Math.min(20, Math.round(radius))));
+          }}
+          onMaxDensityColorValueChange={(value) => {
+            if (!Number.isFinite(value)) return;
+            setMaxDensityColorValue(Math.max(1, Math.min(200, Math.round(value))));
+          }}
         />
 
         <div className="panel">
@@ -207,7 +219,13 @@ export default function App() {
         </div>
       </aside>
 
-      <MapView routeData={routeData} runners={runners} simTime={simTime} />
+      <MapView
+        routeData={routeData}
+        runners={runners}
+        simTime={simTime}
+        densityRadiusMeters={densityRadiusMeters}
+        maxDensityColorValue={maxDensityColorValue}
+      />
     </div>
   );
 }
