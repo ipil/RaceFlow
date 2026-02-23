@@ -75,7 +75,7 @@ export default function MapView({
 
     const latLngs = routeData.points.map((p) => [p.lat, p.lng]) as [number, number][];
     routeLayerRef.current = L.polyline(latLngs, {
-      color: '#1d4ed8',
+      color: '#6b7280',
       weight: 4,
       opacity: 0.9,
     }).addTo(map);

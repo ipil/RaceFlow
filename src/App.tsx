@@ -16,13 +16,33 @@ type RouteData = {
   total: number;
 };
 
+const KM_PER_MILE = 1.609344;
+
+function paceFromMinMile(minutes: number, seconds: number): number {
+  return (minutes * 60 + seconds) / KM_PER_MILE;
+}
+
 const DEFAULT_WAVES: Wave[] = [
   {
     id: 'wave-1',
     startTimeSeconds: 0,
-    runnerCount: 1000,
-    minPaceSecPerKm: 240,
-    maxPaceSecPerKm: 420,
+    runnerCount: 89,
+    minPaceSecPerKm: paceFromMinMile(5, 51),
+    maxPaceSecPerKm: paceFromMinMile(8, 30),
+  },
+  {
+    id: 'wave-2',
+    startTimeSeconds: 300,
+    runnerCount: 158,
+    minPaceSecPerKm: paceFromMinMile(8, 31),
+    maxPaceSecPerKm: paceFromMinMile(11, 0),
+  },
+  {
+    id: 'wave-3',
+    startTimeSeconds: 600,
+    runnerCount: 462,
+    minPaceSecPerKm: paceFromMinMile(11, 0),
+    maxPaceSecPerKm: paceFromMinMile(20, 0),
   },
 ];
 
