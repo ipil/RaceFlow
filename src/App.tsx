@@ -148,11 +148,17 @@ export default function App() {
     void onLoadDefaultRoute();
   }, []);
 
-  const onGenerateRunners = () => {
-    const generated = generateRunners(waves);
-    setRunners(generated);
-    setSimTime(0);
-    setPlaying(false);
+  const onPlayPause = () => {
+    if (playing) {
+      setPlaying(false);
+      return;
+    }
+
+    if (simTime === 0) {
+      const generated = generateRunners(waves);
+      setRunners(generated);
+    }
+    setPlaying(true);
   };
 
   return (
@@ -175,14 +181,14 @@ export default function App() {
           {error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{error}</div>}
         </div>
 
-        <WaveEditor waves={waves} setWaves={setWaves} onGenerateRunners={onGenerateRunners} />
+        <WaveEditor waves={waves} setWaves={setWaves} />
 
         <Controls
           simTime={simTime}
           maxTime={maxTime}
           playing={playing}
           speed={speed}
-          onPlayPause={() => setPlaying((p) => !p)}
+          onPlayPause={onPlayPause}
           onReset={() => {
             setPlaying(false);
             setSimTime(0);

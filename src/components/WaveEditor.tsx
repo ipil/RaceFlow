@@ -3,7 +3,6 @@ import type { Wave } from '../sim/sim';
 type WaveEditorProps = {
   waves: Wave[];
   setWaves: (waves: Wave[]) => void;
-  onGenerateRunners: () => void;
 };
 
 function updateWaveField(
@@ -33,7 +32,7 @@ function minMileToSecPerKm(minutes: number, seconds: number): number {
   return secPerMile / KM_PER_MILE;
 }
 
-export default function WaveEditor({ waves, setWaves, onGenerateRunners }: WaveEditorProps) {
+export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
   const addWave = () => {
     const nextId = `wave-${waves.length + 1}`;
     setWaves([
@@ -191,9 +190,6 @@ export default function WaveEditor({ waves, setWaves, onGenerateRunners }: WaveE
       <div className="row">
         <button type="button" onClick={addWave}>
           Add wave
-        </button>
-        <button type="button" onClick={onGenerateRunners}>
-          Generate runners
         </button>
       </div>
     </div>

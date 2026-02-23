@@ -19,8 +19,8 @@ RaceFlow is a browser-only React app that simulates and animates ~1000 runners m
 
 1. The app auto-loads the default route from `public/default.gpx` (Pumpkin Ridge 10k). You can also use **Upload GPX**.
 2. Edit waves (start time, runner count, min/max pace in min/mile via minutes + seconds dropdowns).
-3. Click **Generate runners**.
-4. Use **Play/Pause**, **Reset**, slider scrub, and playback speed to inspect movement and density coloring.
+3. Click **Play** to auto-generate runners from the current wave settings and start the simulation.
+4. Use **Pause**, **Reset**, slider scrub, and playback speed to inspect movement and density coloring.
 
 ## Notes
 
