@@ -114,15 +114,19 @@ export default function App() {
     e.currentTarget.value = '';
   };
 
-  const onLoadSample = async () => {
+  const onLoadDefaultRoute = async () => {
     try {
-      const resp = await fetch('/sample.gpx');
+      const resp = await fetch('/default.gpx');
       const text = await resp.text();
       loadGpxText(text);
     } catch {
-      setError('Could not load sample GPX route.');
+      setError('Could not load default GPX route.');
     }
   };
+
+  useEffect(() => {
+    void onLoadDefaultRoute();
+  }, []);
 
   const onGenerateRunners = () => {
     const generated = generateRunners(waves);
@@ -142,8 +146,8 @@ export default function App() {
             <label htmlFor="gpx-upload">Upload GPX</label>
             <input id="gpx-upload" type="file" accept=".gpx,application/gpx+xml" onChange={onUploadFile} />
           </div>
-          <button type="button" onClick={onLoadSample}>
-            Load sample route
+          <button type="button" onClick={onLoadDefaultRoute}>
+            Reload default route
           </button>
           <div style={{ marginTop: 8, fontSize: '0.9rem' }}>
             Route length: {routeData ? `${routeData.total.toFixed(0)} m` : 'No route loaded'}
