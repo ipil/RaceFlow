@@ -46,6 +46,11 @@ const DEFAULT_WAVES: Wave[] = [
   },
 ];
 
+const DEFAULT_MAP_OPTIONS = [
+  { id: 'north-first', label: 'Heart to Start 5K - north first', url: '/default-north-first.gpx' },
+  { id: 'south-first', label: 'Heart to Start 5K - south first', url: '/default-south-first.gpx' },
+] as const;
+
 export default function App() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [waves, setWaves] = useState<Wave[]>(DEFAULT_WAVES);
@@ -54,6 +59,9 @@ export default function App() {
   const [simTime, setSimTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [selectedDefaultMapUrl, setSelectedDefaultMapUrl] = useState<string>(
+    DEFAULT_MAP_OPTIONS[0].url,
+  );
   const [densityRadiusMeters, setDensityRadiusMeters] = useState(5);
   const [maxDensityColorValue, setMaxDensityColorValue] = useState(10);
   const [error, setError] = useState<string | null>(null);
@@ -136,9 +144,9 @@ export default function App() {
     e.currentTarget.value = '';
   };
 
-  const onLoadDefaultRoute = async () => {
+  const onLoadDefaultRoute = async (url: string) => {
     try {
-      const resp = await fetch('/default.gpx');
+      const resp = await fetch(url);
       const text = await resp.text();
       loadGpxText(text);
     } catch {
@@ -147,7 +155,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    void onLoadDefaultRoute();
+    void onLoadDefaultRoute(selectedDefaultMapUrl);
   }, []);
 
   const onPlayPause = () => {
@@ -174,8 +182,22 @@ export default function App() {
             <label htmlFor="gpx-upload">Upload GPX</label>
             <input id="gpx-upload" type="file" accept=".gpx,application/gpx+xml" onChange={onUploadFile} />
           </div>
-          <button type="button" onClick={onLoadDefaultRoute}>
-            Reload default route
+          <div className="row">
+            <label htmlFor="default-map-select">Default map</label>
+            <select
+              id="default-map-select"
+              value={selectedDefaultMapUrl}
+              onChange={(e) => setSelectedDefaultMapUrl(e.target.value)}
+            >
+              {DEFAULT_MAP_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.url}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="button" onClick={() => void onLoadDefaultRoute(selectedDefaultMapUrl)}>
+            Load selected default map
           </button>
           <div style={{ marginTop: 8, fontSize: '0.9rem' }}>
             Route length: {routeData ? `${routeData.total.toFixed(0)} m` : 'No route loaded'}
