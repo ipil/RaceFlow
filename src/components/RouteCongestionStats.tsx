@@ -48,40 +48,56 @@ export default function RouteCongestionStats({
         />
       </div>
       <div className="row">
-        <label htmlFor="heat-metric">Route heat map metric</label>
-        <select
-          id="heat-metric"
-          value={heatMetric}
-          onChange={(e) => onHeatMetricChange(e.target.value as 'average' | 'max')}
-        >
-          <option value="average">Average density</option>
-          <option value="max">Maximum density</option>
-        </select>
+        <label>Route heat map metric</label>
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="radio"
+              name="heat-metric"
+              checked={heatMetric === 'average'}
+              onChange={() => onHeatMetricChange('average')}
+            />
+            Average density
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="radio"
+              name="heat-metric"
+              checked={heatMetric === 'max'}
+              onChange={() => onHeatMetricChange('max')}
+            />
+            Maximum density
+          </label>
+        </div>
       </div>
-      <div className="row">
-        <label htmlFor="avg-red-threshold">Average density red value</label>
-        <input
-          id="avg-red-threshold"
-          type="number"
-          min={1}
-          max={500}
-          step={1}
-          value={averageRedThreshold}
-          onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="max-red-threshold">Maximum density red value</label>
-        <input
-          id="max-red-threshold"
-          type="number"
-          min={1}
-          max={500}
-          step={1}
-          value={maxRedThreshold}
-          onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}
-        />
-      </div>
+      {heatMetric === 'average' && (
+        <div className="row">
+          <label htmlFor="avg-red-threshold">Average density red value: {averageRedThreshold}</label>
+          <input
+            id="avg-red-threshold"
+            type="range"
+            min={1}
+            max={500}
+            step={1}
+            value={averageRedThreshold}
+            onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
+          />
+        </div>
+      )}
+      {heatMetric === 'max' && (
+        <div className="row">
+          <label htmlFor="max-red-threshold">Maximum density red value: {maxRedThreshold}</label>
+          <input
+            id="max-red-threshold"
+            type="range"
+            min={1}
+            max={500}
+            step={1}
+            value={maxRedThreshold}
+            onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}
+          />
+        </div>
+      )}
     </div>
   );
 }
