@@ -204,6 +204,11 @@ export default function App() {
             corresponding range of paces.
           </p>
           <p>
+            The default waves represent the waves used in the 2026 Heart to Start 5k race in
+            Tigard, Oregon. The defaul numbers of runners in each wave are the numbers of race
+            finishers from that race with final paces in each wave pace interval.
+          </p>
+          <p>
             <strong>3. Select a Simulation Speed</strong><br />
             By default, the simulation proceeds at 20x real-time speed. Feel free to adjust this
             as desired.
