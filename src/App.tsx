@@ -68,6 +68,7 @@ export default function App() {
   const [maxDensityColorValue, setMaxDensityColorValue] = useState(20);
   const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
   const [heatMetric, setHeatMetric] = useState<'average' | 'max'>('average');
+  const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const rafRef = useRef<number | null>(null);
@@ -292,11 +293,13 @@ export default function App() {
         <RouteCongestionStats
           segmentLengthMeters={segmentLengthMeters}
           heatMetric={heatMetric}
+          showRouteHeatmap={showRouteHeatmap}
           onSegmentLengthChange={(value) => {
             if (!Number.isFinite(value)) return;
             setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
           }}
           onHeatMetricChange={(value) => setHeatMetric(value)}
+          onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
         />
 
         <div className="panel">
@@ -315,6 +318,7 @@ export default function App() {
         maxDensityColorValue={maxDensityColorValue}
         segmentLengthMeters={segmentLengthMeters}
         heatMetric={heatMetric}
+        showRouteHeatmap={showRouteHeatmap}
       />
     </div>
   );

@@ -1,19 +1,32 @@
 type RouteCongestionStatsProps = {
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
+  showRouteHeatmap: boolean;
   onSegmentLengthChange: (value: number) => void;
   onHeatMetricChange: (value: 'average' | 'max') => void;
+  onShowRouteHeatmapChange: (value: boolean) => void;
 };
 
 export default function RouteCongestionStats({
   segmentLengthMeters,
   heatMetric,
+  showRouteHeatmap,
   onSegmentLengthChange,
   onHeatMetricChange,
+  onShowRouteHeatmapChange,
 }: RouteCongestionStatsProps) {
   return (
     <div className="panel">
       <h2>Route Congestion Stats</h2>
+      <div className="row">
+        <label htmlFor="show-route-heatmap">Show route segment heat map</label>
+        <input
+          id="show-route-heatmap"
+          type="checkbox"
+          checked={showRouteHeatmap}
+          onChange={(e) => onShowRouteHeatmapChange(e.target.checked)}
+        />
+      </div>
       <div className="row">
         <label htmlFor="segment-length">Segment length (m)</label>
         <input
