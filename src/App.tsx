@@ -264,8 +264,6 @@ export default function App() {
           maxTime={maxTime}
           playing={playing}
           speed={speed}
-          maxDensityColorValue={maxDensityColorValue}
-          segmentLengthMeters={segmentLengthMeters}
           onPlayPause={onPlayPause}
           onReset={() => {
             setPlaying(false);

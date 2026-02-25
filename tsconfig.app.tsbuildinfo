@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/controls.tsx","./src/components/mapview.tsx","./src/components/routecongestionstats.tsx","./src/components/runnerdotcoloring.tsx","./src/components/waveeditor.tsx","./src/sim/route.ts","./src/sim/sim.ts"],"version":"5.9.3"}
