@@ -15,8 +15,11 @@ type MapViewProps = {
   routeData: RouteData | null;
   runners: Runner[];
   simTime: number;
+  playing: boolean;
   densityRadiusMeters: number;
   maxDensityColorValue: number;
+  segmentLengthMeters: number;
+  heatMetric: 'average' | 'max';
 };
 
 function densityToColor(norm: number): string {
@@ -31,8 +34,11 @@ export default function MapView({
   routeData,
   runners,
   simTime,
+  playing,
   densityRadiusMeters,
   maxDensityColorValue,
+  segmentLengthMeters,
+  heatMetric,
 }: MapViewProps) {
   const mapRootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -45,6 +51,36 @@ export default function MapView({
   const xMetersRef = useRef<Float64Array>(new Float64Array(0));
   const yMetersRef = useRef<Float64Array>(new Float64Array(0));
   const densityPerRunnerRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentSumDensityRef = useRef<Float64Array>(new Float64Array(0));
+  const segmentWeightRef = useRef<Float64Array>(new Float64Array(0));
+  const segmentMaxDensityRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentTmpSumRef = useRef<Float64Array>(new Float64Array(0));
+  const segmentTmpCountRef = useRef<Uint16Array>(new Uint16Array(0));
+  const segmentTmpMaxRef = useRef<Float32Array>(new Float32Array(0));
+  const lastTrackedSimTimeRef = useRef(0);
+
+  const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
+  const segmentBreakpoints = useMemo(() => {
+    if (!routeData || routeData.total <= 0) return [] as LatLng[];
+    const count = Math.max(1, Math.ceil(routeData.total / segmentLengthMeters));
+    const out = new Array<LatLng>(count + 1);
+    for (let i = 0; i <= count; i += 1) {
+      const d = Math.min(routeData.total, i * segmentLengthMeters);
+      out[i] = positionAtDistance(routeData.points, routeData.cumdist, d);
+    }
+    return out;
+  }, [routeData, segmentLengthMeters]);
+
+  useEffect(() => {
+    if (!routeData || segmentCount <= 0) return;
+    segmentSumDensityRef.current = new Float64Array(segmentCount);
+    segmentWeightRef.current = new Float64Array(segmentCount);
+    segmentMaxDensityRef.current = new Float32Array(segmentCount);
+    segmentTmpSumRef.current = new Float64Array(segmentCount);
+    segmentTmpCountRef.current = new Uint16Array(segmentCount);
+    segmentTmpMaxRef.current = new Float32Array(segmentCount);
+    lastTrackedSimTimeRef.current = 0;
+  }, [routeData, segmentLengthMeters, runners, segmentCount]);
 
   useEffect(() => {
     if (!mapRootRef.current || mapRef.current) return;
@@ -126,6 +162,12 @@ export default function MapView({
       const earthRadiusM = 6371000;
       const refLatRad = (routeData.points[0].lat * Math.PI) / 180;
       const cosRefLat = Math.cos(refLatRad);
+      const segmentTmpSum = segmentTmpSumRef.current;
+      const segmentTmpCount = segmentTmpCountRef.current;
+      const segmentTmpMax = segmentTmpMaxRef.current;
+      const segmentSumDensity = segmentSumDensityRef.current;
+      const segmentWeight = segmentWeightRef.current;
+      const segmentMaxDensity = segmentMaxDensityRef.current;
 
       for (let i = 0; i < runnerCount; i += 1) {
         const d = runnerDistanceMeters(runners[i], simTime, routeData.total);
@@ -153,6 +195,68 @@ export default function MapView({
         }
       }
 
+      if (simTime < lastTrackedSimTimeRef.current) {
+        segmentSumDensity.fill(0);
+        segmentWeight.fill(0);
+        segmentMaxDensity.fill(0);
+      }
+      const deltaTime = Math.max(0, simTime - lastTrackedSimTimeRef.current);
+      if (playing && deltaTime > 0 && segmentCount > 0) {
+        segmentTmpSum.fill(0);
+        segmentTmpCount.fill(0);
+        segmentTmpMax.fill(0);
+
+        for (let i = 0; i < runnerCount; i += 1) {
+          const segIdx = Math.min(
+            segmentCount - 1,
+            Math.max(0, Math.floor(distances[i] / segmentLengthMeters)),
+          );
+          const density = densityPerRunner[i];
+          segmentTmpSum[segIdx] += density;
+          segmentTmpCount[segIdx] += 1;
+          if (density > segmentTmpMax[segIdx]) {
+            segmentTmpMax[segIdx] = density;
+          }
+        }
+
+        for (let i = 0; i < segmentCount; i += 1) {
+          if (segmentTmpCount[i] > 0) {
+            const frameAvg = segmentTmpSum[i] / segmentTmpCount[i];
+            segmentSumDensity[i] += frameAvg * deltaTime;
+            segmentWeight[i] += deltaTime;
+          }
+          if (segmentTmpMax[i] > segmentMaxDensity[i]) {
+            segmentMaxDensity[i] = segmentTmpMax[i];
+          }
+        }
+      }
+      lastTrackedSimTimeRef.current = simTime;
+
+      if (segmentCount > 0 && segmentBreakpoints.length === segmentCount + 1) {
+        const denom = Math.max(1, maxDensityColorValue - 1);
+        ctx.globalAlpha = 0.9;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < segmentCount; i += 1) {
+          const p0 = segmentBreakpoints[i];
+          const p1 = segmentBreakpoints[i + 1];
+          const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
+          const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
+          const value =
+            heatMetric === 'average'
+              ? segmentWeight[i] > 0
+                ? segmentSumDensity[i] / segmentWeight[i]
+                : 0
+              : segmentMaxDensity[i];
+          const norm = (value - 1) / denom;
+          ctx.beginPath();
+          ctx.moveTo(pt0.x, pt0.y);
+          ctx.lineTo(pt1.x, pt1.y);
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = densityToColor(norm);
+          ctx.stroke();
+        }
+      }
+
       ctx.globalAlpha = 0.92;
       for (let i = 0; i < runnerCount; i += 1) {
         const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
@@ -166,7 +270,18 @@ export default function MapView({
       }
       ctx.globalAlpha = 1;
     };
-  }, [routeData, runners, simTime, densityRadiusMeters, maxDensityColorValue]);
+  }, [
+    routeData,
+    runners,
+    simTime,
+    playing,
+    densityRadiusMeters,
+    maxDensityColorValue,
+    segmentLengthMeters,
+    segmentCount,
+    segmentBreakpoints,
+    heatMetric,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -64,6 +64,8 @@ export default function App() {
   );
   const [densityRadiusMeters, setDensityRadiusMeters] = useState(15);
   const [maxDensityColorValue, setMaxDensityColorValue] = useState(20);
+  const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
+  const [heatMetric, setHeatMetric] = useState<'average' | 'max'>('average');
   const [error, setError] = useState<string | null>(null);
 
   const rafRef = useRef<number | null>(null);
@@ -262,6 +264,8 @@ export default function App() {
           speed={speed}
           densityRadiusMeters={densityRadiusMeters}
           maxDensityColorValue={maxDensityColorValue}
+          segmentLengthMeters={segmentLengthMeters}
+          heatMetric={heatMetric}
           onPlayPause={onPlayPause}
           onReset={() => {
             setPlaying(false);
@@ -280,6 +284,11 @@ export default function App() {
             if (!Number.isFinite(value)) return;
             setMaxDensityColorValue(Math.max(1, Math.min(200, Math.round(value))));
           }}
+          onSegmentLengthChange={(value) => {
+            if (!Number.isFinite(value)) return;
+            setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
+          }}
+          onHeatMetricChange={(value) => setHeatMetric(value)}
         />
 
         <div className="panel">
@@ -293,8 +302,11 @@ export default function App() {
         routeData={routeData}
         runners={runners}
         simTime={simTime}
+        playing={playing}
         densityRadiusMeters={densityRadiusMeters}
         maxDensityColorValue={maxDensityColorValue}
+        segmentLengthMeters={segmentLengthMeters}
+        heatMetric={heatMetric}
       />
     </div>
   );

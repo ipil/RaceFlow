@@ -7,12 +7,16 @@ type ControlsProps = {
   speed: number;
   densityRadiusMeters: number;
   maxDensityColorValue: number;
+  segmentLengthMeters: number;
+  heatMetric: 'average' | 'max';
   onPlayPause: () => void;
   onReset: () => void;
   onTimeChange: (time: number) => void;
   onSpeedChange: (speed: number) => void;
   onDensityRadiusChange: (radius: number) => void;
   onMaxDensityColorValueChange: (value: number) => void;
+  onSegmentLengthChange: (value: number) => void;
+  onHeatMetricChange: (value: 'average' | 'max') => void;
 };
 
 const SPEEDS = [10, 15, 20, 30, 50, 100];
@@ -32,12 +36,16 @@ export default function Controls({
   speed,
   densityRadiusMeters,
   maxDensityColorValue,
+  segmentLengthMeters,
+  heatMetric,
   onPlayPause,
   onReset,
   onTimeChange,
   onSpeedChange,
   onDensityRadiusChange,
   onMaxDensityColorValueChange,
+  onSegmentLengthChange,
+  onHeatMetricChange,
 }: ControlsProps) {
   const timeLabel = useMemo(() => formatTime(simTime), [simTime]);
 
@@ -104,6 +112,29 @@ export default function Controls({
           value={maxDensityColorValue}
           onChange={(e) => onMaxDensityColorValueChange(Number(e.target.value))}
         />
+      </div>
+      <div className="row">
+        <label htmlFor="segment-length">Segment length (m)</label>
+        <input
+          id="segment-length"
+          type="number"
+          min={1}
+          max={100}
+          step={1}
+          value={segmentLengthMeters}
+          onChange={(e) => onSegmentLengthChange(Number(e.target.value))}
+        />
+      </div>
+      <div className="row">
+        <label htmlFor="heat-metric">Route heat map metric</label>
+        <select
+          id="heat-metric"
+          value={heatMetric}
+          onChange={(e) => onHeatMetricChange(e.target.value as 'average' | 'max')}
+        >
+          <option value="average">Average density</option>
+          <option value="max">Maximum density</option>
+        </select>
       </div>
     </div>
   );
