@@ -3,6 +3,8 @@ import 'leaflet/dist/leaflet.css';
 import MapView from './components/MapView';
 import WaveEditor from './components/WaveEditor';
 import Controls from './components/Controls';
+import RouteCongestionStats from './components/RouteCongestionStats';
+import RunnerDotColoring from './components/RunnerDotColoring';
 import {
   buildCumulativeDistances,
   parseGpxToLatLngs,
@@ -262,10 +264,8 @@ export default function App() {
           maxTime={maxTime}
           playing={playing}
           speed={speed}
-          densityRadiusMeters={densityRadiusMeters}
           maxDensityColorValue={maxDensityColorValue}
           segmentLengthMeters={segmentLengthMeters}
-          heatMetric={heatMetric}
           onPlayPause={onPlayPause}
           onReset={() => {
             setPlaying(false);
@@ -276,6 +276,11 @@ export default function App() {
             setSimTime(Math.max(0, Math.min(maxTime, t)));
           }}
           onSpeedChange={(s) => setSpeed(s)}
+        />
+
+        <RunnerDotColoring
+          densityRadiusMeters={densityRadiusMeters}
+          maxDensityColorValue={maxDensityColorValue}
           onDensityRadiusChange={(radius) => {
             if (!Number.isFinite(radius)) return;
             setDensityRadiusMeters(Math.max(2, Math.min(20, Math.round(radius))));
@@ -284,6 +289,11 @@ export default function App() {
             if (!Number.isFinite(value)) return;
             setMaxDensityColorValue(Math.max(1, Math.min(200, Math.round(value))));
           }}
+        />
+
+        <RouteCongestionStats
+          segmentLengthMeters={segmentLengthMeters}
+          heatMetric={heatMetric}
           onSegmentLengthChange={(value) => {
             if (!Number.isFinite(value)) return;
             setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
