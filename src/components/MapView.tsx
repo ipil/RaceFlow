@@ -57,6 +57,10 @@ export default function MapView({
   const segmentTmpSumRef = useRef<Float64Array>(new Float64Array(0));
   const segmentTmpCountRef = useRef<Uint16Array>(new Uint16Array(0));
   const segmentTmpMaxRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentDisplayValueRef = useRef<Float32Array>(new Float32Array(0));
+  const groupValueRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentColorMinRef = useRef(Number.POSITIVE_INFINITY);
+  const segmentColorMaxRef = useRef(Number.NEGATIVE_INFINITY);
   const lastTrackedSimTimeRef = useRef(0);
 
   const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
@@ -71,6 +75,43 @@ export default function MapView({
     return out;
   }, [routeData, segmentLengthMeters]);
 
+  const segmentSpatialGroups = useMemo(() => {
+    if (!routeData || segmentCount <= 0 || segmentBreakpoints.length !== segmentCount + 1) {
+      return { segToGroup: new Uint32Array(0), groupCount: 0 };
+    }
+
+    const earthRadiusM = 6371000;
+    const refLatRad = (routeData.points[0].lat * Math.PI) / 180;
+    const cosRefLat = Math.cos(refLatRad);
+    const cellSizeM = Math.max(3, segmentLengthMeters);
+    const groupByCell = new Map<string, number>();
+    const segToGroup = new Uint32Array(segmentCount);
+    let groupCount = 0;
+
+    for (let i = 0; i < segmentCount; i += 1) {
+      const a = segmentBreakpoints[i];
+      const b = segmentBreakpoints[i + 1];
+      const midLat = (a.lat + b.lat) * 0.5;
+      const midLng = (a.lng + b.lng) * 0.5;
+      const x = earthRadiusM * ((midLng * Math.PI) / 180) * cosRefLat;
+      const y = earthRadiusM * ((midLat * Math.PI) / 180);
+      const cellX = Math.round(x / cellSizeM);
+      const cellY = Math.round(y / cellSizeM);
+      const key = `${cellX}:${cellY}`;
+
+      const groupId = groupByCell.get(key);
+      if (groupId !== undefined) {
+        segToGroup[i] = groupId;
+      } else {
+        segToGroup[i] = groupCount;
+        groupByCell.set(key, groupCount);
+        groupCount += 1;
+      }
+    }
+
+    return { segToGroup, groupCount };
+  }, [routeData, segmentCount, segmentBreakpoints, segmentLengthMeters]);
+
   useEffect(() => {
     if (!routeData || segmentCount <= 0) return;
     segmentSumDensityRef.current = new Float64Array(segmentCount);
@@ -79,7 +120,10 @@ export default function MapView({
     segmentTmpSumRef.current = new Float64Array(segmentCount);
     segmentTmpCountRef.current = new Uint16Array(segmentCount);
     segmentTmpMaxRef.current = new Float32Array(segmentCount);
+    segmentDisplayValueRef.current = new Float32Array(segmentCount);
     lastTrackedSimTimeRef.current = 0;
+    segmentColorMinRef.current = Number.POSITIVE_INFINITY;
+    segmentColorMaxRef.current = Number.NEGATIVE_INFINITY;
   }, [routeData, segmentLengthMeters, runners, segmentCount]);
 
   useEffect(() => {
@@ -168,6 +212,7 @@ export default function MapView({
       const segmentSumDensity = segmentSumDensityRef.current;
       const segmentWeight = segmentWeightRef.current;
       const segmentMaxDensity = segmentMaxDensityRef.current;
+      const segmentDisplayValues = segmentDisplayValueRef.current;
 
       for (let i = 0; i < runnerCount; i += 1) {
         const d = runnerDistanceMeters(runners[i], simTime, routeData.total);
@@ -199,6 +244,8 @@ export default function MapView({
         segmentSumDensity.fill(0);
         segmentWeight.fill(0);
         segmentMaxDensity.fill(0);
+        segmentColorMinRef.current = Number.POSITIVE_INFINITY;
+        segmentColorMaxRef.current = Number.NEGATIVE_INFINITY;
       }
       const deltaTime = Math.max(0, simTime - lastTrackedSimTimeRef.current);
       if (playing && deltaTime > 0 && segmentCount > 0) {
@@ -233,21 +280,47 @@ export default function MapView({
       lastTrackedSimTimeRef.current = simTime;
 
       if (segmentCount > 0 && segmentBreakpoints.length === segmentCount + 1) {
-        const denom = Math.max(1, maxDensityColorValue - 1);
-        ctx.globalAlpha = 0.9;
-        ctx.lineCap = 'round';
+        const { segToGroup, groupCount } = segmentSpatialGroups;
+        if (groupValueRef.current.length !== groupCount) {
+          groupValueRef.current = new Float32Array(groupCount);
+        }
+        const groupValues = groupValueRef.current;
+        groupValues.fill(0);
+        let frameMin = Number.POSITIVE_INFINITY;
+        let frameMax = Number.NEGATIVE_INFINITY;
+
         for (let i = 0; i < segmentCount; i += 1) {
-          const p0 = segmentBreakpoints[i];
-          const p1 = segmentBreakpoints[i + 1];
-          const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
-          const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
           const value =
             heatMetric === 'average'
               ? segmentWeight[i] > 0
                 ? segmentSumDensity[i] / segmentWeight[i]
                 : 0
               : segmentMaxDensity[i];
-          const norm = (value - 1) / denom;
+          segmentDisplayValues[i] = value;
+          if (value < frameMin) frameMin = value;
+          if (value > frameMax) frameMax = value;
+          const g = segToGroup[i];
+          if (value > groupValues[g]) {
+            groupValues[g] = value;
+          }
+        }
+        if (frameMin < Number.POSITIVE_INFINITY) {
+          if (frameMin < segmentColorMinRef.current) segmentColorMinRef.current = frameMin;
+          if (frameMax > segmentColorMaxRef.current) segmentColorMaxRef.current = frameMax;
+        }
+        const histMin = Number.isFinite(segmentColorMinRef.current) ? segmentColorMinRef.current : 0;
+        const histMax = Number.isFinite(segmentColorMaxRef.current) ? segmentColorMaxRef.current : 1;
+        const range = Math.max(1e-6, histMax - histMin);
+
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < segmentCount; i += 1) {
+          const p0 = segmentBreakpoints[i];
+          const p1 = segmentBreakpoints[i + 1];
+          const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
+          const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
+          const value = groupValues[segToGroup[i]];
+          const norm = (value - histMin) / range;
           ctx.beginPath();
           ctx.moveTo(pt0.x, pt0.y);
           ctx.lineTo(pt1.x, pt1.y);
@@ -280,6 +353,7 @@ export default function MapView({
     segmentLengthMeters,
     segmentCount,
     segmentBreakpoints,
+    segmentSpatialGroups,
     heatMetric,
   ]);
 
