@@ -69,6 +69,8 @@ export default function App() {
   const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
   const [heatMetric, setHeatMetric] = useState<'average' | 'max'>('average');
   const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
+  const [averageRedThreshold, setAverageRedThreshold] = useState(20);
+  const [maxRedThreshold, setMaxRedThreshold] = useState(20);
   const [error, setError] = useState<string | null>(null);
 
   const rafRef = useRef<number | null>(null);
@@ -294,12 +296,22 @@ export default function App() {
           segmentLengthMeters={segmentLengthMeters}
           heatMetric={heatMetric}
           showRouteHeatmap={showRouteHeatmap}
+          averageRedThreshold={averageRedThreshold}
+          maxRedThreshold={maxRedThreshold}
           onSegmentLengthChange={(value) => {
             if (!Number.isFinite(value)) return;
             setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
           }}
           onHeatMetricChange={(value) => setHeatMetric(value)}
           onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
+          onAverageRedThresholdChange={(value) => {
+            if (!Number.isFinite(value)) return;
+            setAverageRedThreshold(Math.max(1, Math.min(500, Math.round(value))));
+          }}
+          onMaxRedThresholdChange={(value) => {
+            if (!Number.isFinite(value)) return;
+            setMaxRedThreshold(Math.max(1, Math.min(500, Math.round(value))));
+          }}
         />
 
         <div className="panel">
@@ -319,6 +331,8 @@ export default function App() {
         segmentLengthMeters={segmentLengthMeters}
         heatMetric={heatMetric}
         showRouteHeatmap={showRouteHeatmap}
+        averageRedThreshold={averageRedThreshold}
+        maxRedThreshold={maxRedThreshold}
       />
     </div>
   );

@@ -2,18 +2,26 @@ type RouteCongestionStatsProps = {
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
   showRouteHeatmap: boolean;
+  averageRedThreshold: number;
+  maxRedThreshold: number;
   onSegmentLengthChange: (value: number) => void;
   onHeatMetricChange: (value: 'average' | 'max') => void;
   onShowRouteHeatmapChange: (value: boolean) => void;
+  onAverageRedThresholdChange: (value: number) => void;
+  onMaxRedThresholdChange: (value: number) => void;
 };
 
 export default function RouteCongestionStats({
   segmentLengthMeters,
   heatMetric,
   showRouteHeatmap,
+  averageRedThreshold,
+  maxRedThreshold,
   onSegmentLengthChange,
   onHeatMetricChange,
   onShowRouteHeatmapChange,
+  onAverageRedThresholdChange,
+  onMaxRedThresholdChange,
 }: RouteCongestionStatsProps) {
   return (
     <div className="panel">
@@ -49,6 +57,30 @@ export default function RouteCongestionStats({
           <option value="average">Average density</option>
           <option value="max">Maximum density</option>
         </select>
+      </div>
+      <div className="row">
+        <label htmlFor="avg-red-threshold">Average density red value</label>
+        <input
+          id="avg-red-threshold"
+          type="number"
+          min={1}
+          max={500}
+          step={1}
+          value={averageRedThreshold}
+          onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
+        />
+      </div>
+      <div className="row">
+        <label htmlFor="max-red-threshold">Maximum density red value</label>
+        <input
+          id="max-red-threshold"
+          type="number"
+          min={1}
+          max={500}
+          step={1}
+          value={maxRedThreshold}
+          onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}
+        />
       </div>
     </div>
   );

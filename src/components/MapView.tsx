@@ -21,6 +21,8 @@ type MapViewProps = {
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
   showRouteHeatmap: boolean;
+  averageRedThreshold: number;
+  maxRedThreshold: number;
 };
 
 function densityToColor(norm: number): string {
@@ -41,6 +43,8 @@ export default function MapView({
   segmentLengthMeters,
   heatMetric,
   showRouteHeatmap,
+  averageRedThreshold,
+  maxRedThreshold,
 }: MapViewProps) {
   const mapRootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -59,10 +63,7 @@ export default function MapView({
   const segmentTmpSumRef = useRef<Float64Array>(new Float64Array(0));
   const segmentTmpCountRef = useRef<Uint16Array>(new Uint16Array(0));
   const segmentTmpMaxRef = useRef<Float32Array>(new Float32Array(0));
-  const segmentDisplayValueRef = useRef<Float32Array>(new Float32Array(0));
   const groupValueRef = useRef<Float32Array>(new Float32Array(0));
-  const segmentColorMinRef = useRef(Number.POSITIVE_INFINITY);
-  const segmentColorMaxRef = useRef(Number.NEGATIVE_INFINITY);
   const lastTrackedSimTimeRef = useRef(0);
 
   const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
@@ -134,10 +135,7 @@ export default function MapView({
     segmentTmpSumRef.current = new Float64Array(segmentCount);
     segmentTmpCountRef.current = new Uint16Array(segmentCount);
     segmentTmpMaxRef.current = new Float32Array(segmentCount);
-    segmentDisplayValueRef.current = new Float32Array(segmentCount);
     lastTrackedSimTimeRef.current = 0;
-    segmentColorMinRef.current = Number.POSITIVE_INFINITY;
-    segmentColorMaxRef.current = Number.NEGATIVE_INFINITY;
   }, [routeData, segmentLengthMeters, runners, segmentCount]);
 
   useEffect(() => {
@@ -226,7 +224,6 @@ export default function MapView({
       const segmentSumDensity = segmentSumDensityRef.current;
       const segmentWeight = segmentWeightRef.current;
       const segmentMaxDensity = segmentMaxDensityRef.current;
-      const segmentDisplayValues = segmentDisplayValueRef.current;
 
       for (let i = 0; i < runnerCount; i += 1) {
         const d = runnerDistanceMeters(runners[i], simTime, routeData.total);
@@ -258,8 +255,6 @@ export default function MapView({
         segmentSumDensity.fill(0);
         segmentWeight.fill(0);
         segmentMaxDensity.fill(0);
-        segmentColorMinRef.current = Number.POSITIVE_INFINITY;
-        segmentColorMaxRef.current = Number.NEGATIVE_INFINITY;
       }
       const deltaTime = Math.max(0, simTime - lastTrackedSimTimeRef.current);
       if (playing && deltaTime > 0 && segmentCount > 0) {
@@ -296,14 +291,15 @@ export default function MapView({
       lastTrackedSimTimeRef.current = simTime;
 
       if (showRouteHeatmap && segmentCount > 0 && segmentBreakpoints.length === segmentCount + 1) {
+        const activeRedThreshold =
+          heatMetric === 'average' ? averageRedThreshold : maxRedThreshold;
+        const denom = Math.max(1, activeRedThreshold - 1);
         const { segToGroup, groupCount } = segmentSpatialGroups;
         if (groupValueRef.current.length !== groupCount) {
           groupValueRef.current = new Float32Array(groupCount);
         }
         const groupValues = groupValueRef.current;
         groupValues.fill(0);
-        let frameMin = Number.POSITIVE_INFINITY;
-        let frameMax = Number.NEGATIVE_INFINITY;
 
         for (let i = 0; i < segmentCount; i += 1) {
           if (activeSegmentMask[i] === 0) continue;
@@ -313,21 +309,11 @@ export default function MapView({
                 ? segmentSumDensity[i] / segmentWeight[i]
                 : 0
               : segmentMaxDensity[i];
-          segmentDisplayValues[i] = value;
-          if (value < frameMin) frameMin = value;
-          if (value > frameMax) frameMax = value;
           const g = segToGroup[i];
           if (value > groupValues[g]) {
             groupValues[g] = value;
           }
         }
-        if (frameMin < Number.POSITIVE_INFINITY) {
-          if (frameMin < segmentColorMinRef.current) segmentColorMinRef.current = frameMin;
-          if (frameMax > segmentColorMaxRef.current) segmentColorMaxRef.current = frameMax;
-        }
-        const histMin = Number.isFinite(segmentColorMinRef.current) ? segmentColorMinRef.current : 0;
-        const histMax = Number.isFinite(segmentColorMaxRef.current) ? segmentColorMaxRef.current : 1;
-        const range = Math.max(1e-6, histMax - histMin);
 
         ctx.globalAlpha = 1;
         ctx.lineCap = 'round';
@@ -338,7 +324,7 @@ export default function MapView({
           const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
           const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
           const value = groupValues[segToGroup[i]];
-          const norm = (value - histMin) / range;
+          const norm = (value - 1) / denom;
           ctx.beginPath();
           ctx.moveTo(pt0.x, pt0.y);
           ctx.lineTo(pt1.x, pt1.y);
@@ -375,6 +361,8 @@ export default function MapView({
     segmentSpatialGroups,
     heatMetric,
     showRouteHeatmap,
+    averageRedThreshold,
+    maxRedThreshold,
   ]);
 
   useEffect(() => {
