@@ -58,12 +58,12 @@ export default function MapView({
   const yMetersRef = useRef<Float64Array>(new Float64Array(0));
   const densityPerRunnerRef = useRef<Float32Array>(new Float32Array(0));
   const segmentSumDensityRef = useRef<Float64Array>(new Float64Array(0));
-  const segmentWeightRef = useRef<Float64Array>(new Float64Array(0));
+  const segmentSampleCountRef = useRef<Uint32Array>(new Uint32Array(0));
   const segmentMaxDensityRef = useRef<Float32Array>(new Float32Array(0));
-  const segmentTmpSumRef = useRef<Float64Array>(new Float64Array(0));
   const segmentTmpCountRef = useRef<Uint16Array>(new Uint16Array(0));
-  const segmentTmpMaxRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentSeenRef = useRef<Uint8Array>(new Uint8Array(0));
   const groupValueRef = useRef<Float32Array>(new Float32Array(0));
+  const groupSeenRef = useRef<Uint8Array>(new Uint8Array(0));
   const lastTrackedSimTimeRef = useRef(0);
 
   const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
@@ -118,11 +118,10 @@ export default function MapView({
   useEffect(() => {
     if (!routeData || segmentCount <= 0) return;
     segmentSumDensityRef.current = new Float64Array(segmentCount);
-    segmentWeightRef.current = new Float64Array(segmentCount);
+    segmentSampleCountRef.current = new Uint32Array(segmentCount);
     segmentMaxDensityRef.current = new Float32Array(segmentCount);
-    segmentTmpSumRef.current = new Float64Array(segmentCount);
     segmentTmpCountRef.current = new Uint16Array(segmentCount);
-    segmentTmpMaxRef.current = new Float32Array(segmentCount);
+    segmentSeenRef.current = new Uint8Array(segmentCount);
     lastTrackedSimTimeRef.current = 0;
   }, [routeData, segmentLengthMeters, runners, segmentCount]);
 
@@ -203,15 +202,15 @@ export default function MapView({
       const ys = yMetersRef.current;
       const densityPerRunner = densityPerRunnerRef.current;
       const radiusSq = densityRadiusMeters * densityRadiusMeters;
+      const invDensityRadius = 1 / Math.max(1e-6, densityRadiusMeters);
       const earthRadiusM = 6371000;
       const refLatRad = (routeData.points[0].lat * Math.PI) / 180;
       const cosRefLat = Math.cos(refLatRad);
-      const segmentTmpSum = segmentTmpSumRef.current;
       const segmentTmpCount = segmentTmpCountRef.current;
-      const segmentTmpMax = segmentTmpMaxRef.current;
       const segmentSumDensity = segmentSumDensityRef.current;
-      const segmentWeight = segmentWeightRef.current;
+      const segmentSampleCount = segmentSampleCountRef.current;
       const segmentMaxDensity = segmentMaxDensityRef.current;
+      const segmentSeen = segmentSeenRef.current;
 
       for (let i = 0; i < runnerCount; i += 1) {
         const d = runnerDistanceMeters(runners[i], simTime, routeData.total);
@@ -237,40 +236,39 @@ export default function MapView({
             densityPerRunner[j] += 1;
           }
         }
+        densityPerRunner[i] *= invDensityRadius;
       }
 
       if (simTime < lastTrackedSimTimeRef.current) {
         segmentSumDensity.fill(0);
-        segmentWeight.fill(0);
+        segmentSampleCount.fill(0);
         segmentMaxDensity.fill(0);
+        segmentSeen.fill(0);
       }
-      const deltaTime = Math.max(0, simTime - lastTrackedSimTimeRef.current);
-      if (playing && deltaTime > 0 && segmentCount > 0) {
-        segmentTmpSum.fill(0);
+      if (playing && segmentCount > 0) {
         segmentTmpCount.fill(0);
-        segmentTmpMax.fill(0);
 
         for (let i = 0; i < runnerCount; i += 1) {
           const segIdx = Math.min(
             segmentCount - 1,
             Math.max(0, Math.floor(distances[i] / segmentLengthMeters)),
           );
-          const density = densityPerRunner[i];
-          segmentTmpSum[segIdx] += density;
           segmentTmpCount[segIdx] += 1;
-          if (density > segmentTmpMax[segIdx]) {
-            segmentTmpMax[segIdx] = density;
-          }
         }
 
         for (let i = 0; i < segmentCount; i += 1) {
-          if (segmentTmpCount[i] > 0) {
-            const frameAvg = segmentTmpSum[i] / segmentTmpCount[i];
-            segmentSumDensity[i] += frameAvg * deltaTime;
-            segmentWeight[i] += deltaTime;
+          const frameDensity = segmentTmpCount[i] / segmentLengthMeters;
+          if (frameDensity > 0) {
+            segmentSeen[i] = 1;
           }
-          if (segmentTmpMax[i] > segmentMaxDensity[i]) {
-            segmentMaxDensity[i] = segmentTmpMax[i];
+          if (segmentSeen[i] === 0) {
+            continue;
+          }
+
+          segmentSumDensity[i] += frameDensity;
+          segmentSampleCount[i] += 1;
+          if (frameDensity > segmentMaxDensity[i]) {
+            segmentMaxDensity[i] = frameDensity;
           }
         }
       }
@@ -279,22 +277,30 @@ export default function MapView({
       if (showRouteHeatmap && segmentCount > 0 && segmentBreakpoints.length === segmentCount + 1) {
         const activeRedThreshold =
           heatMetric === 'average' ? averageRedThreshold : maxRedThreshold;
-        const denom = Math.max(1, activeRedThreshold - 1);
+        const denom = Math.max(1e-6, activeRedThreshold);
         const { segToGroup, groupCount } = segmentSpatialGroups;
         if (groupValueRef.current.length !== groupCount) {
           groupValueRef.current = new Float32Array(groupCount);
         }
+        if (groupSeenRef.current.length !== groupCount) {
+          groupSeenRef.current = new Uint8Array(groupCount);
+        }
         const groupValues = groupValueRef.current;
+        const groupSeen = groupSeenRef.current;
         groupValues.fill(0);
+        groupSeen.fill(0);
 
         for (let i = 0; i < segmentCount; i += 1) {
+          const hasSeenRunner = segmentSeen[i] === 1;
+          if (!hasSeenRunner) continue;
           const value =
             heatMetric === 'average'
-              ? segmentWeight[i] > 0
-                ? segmentSumDensity[i] / segmentWeight[i]
+              ? segmentSampleCount[i] > 0
+                ? segmentSumDensity[i] / segmentSampleCount[i]
                 : 0
               : segmentMaxDensity[i];
           const g = segToGroup[i];
+          groupSeen[g] = 1;
           if (value > groupValues[g]) {
             groupValues[g] = value;
           }
@@ -307,8 +313,11 @@ export default function MapView({
           const p1 = segmentBreakpoints[i + 1];
           const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
           const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
-          const value = groupValues[segToGroup[i]];
-          const norm = (value - 1) / denom;
+          const groupIdx = segToGroup[i];
+          const hasSeenRunner = segmentSeen[i] === 1;
+          if (!hasSeenRunner || groupSeen[groupIdx] === 0) continue;
+          const value = groupValues[groupIdx];
+          const norm = value / denom;
           ctx.beginPath();
           ctx.moveTo(pt0.x, pt0.y);
           ctx.lineTo(pt1.x, pt1.y);
@@ -321,8 +330,10 @@ export default function MapView({
       ctx.globalAlpha = 0.92;
       for (let i = 0; i < runnerCount; i += 1) {
         const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
-        const denom = Math.max(1, maxDensityColorValue - 1);
-        const norm = (densityPerRunner[i] - 1) / denom;
+        const lowDensity = invDensityRadius;
+        const highDensity = maxDensityColorValue * invDensityRadius;
+        const denom = Math.max(1e-6, highDensity - lowDensity);
+        const norm = (densityPerRunner[i] - lowDensity) / denom;
 
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 2.7, 0, Math.PI * 2);
