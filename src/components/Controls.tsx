@@ -15,9 +15,7 @@ type ControlsProps = {
   onMaxDensityColorValueChange: (value: number) => void;
 };
 
-const SPEEDS = [
-  0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50,
-];
+const SPEEDS = [10, 15, 20, 30, 50, 100];
 
 function formatTime(tSec: number): string {
   const total = Math.max(0, Math.floor(tSec));
@@ -70,7 +68,7 @@ export default function Controls({
         />
       </div>
       <div className="row">
-        <label htmlFor="sim-speed">Speed</label>
+        <label htmlFor="sim-speed">Simulation Speed</label>
         <select
           id="sim-speed"
           value={speed}
@@ -96,7 +94,7 @@ export default function Controls({
         />
       </div>
       <div className="row">
-        <label htmlFor="max-density-color">Max density color (runners)</label>
+        <label htmlFor="max-density-color">Max density (number of runners)</label>
         <input
           id="max-density-color"
           type="number"

@@ -63,14 +63,21 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
             <div key={wave.id} className="wave-card">
               <strong>{wave.id}</strong>
             <div className="row">
-              <label>Start (sec)</label>
+              <label>Start (min)</label>
               <input
                 type="number"
-                value={wave.startTimeSeconds}
+                value={wave.startTimeSeconds / 60}
                 min={0}
                 step={1}
                 onChange={(e) =>
-                  setWaves(updateWaveField(waves, wave.id, 'startTimeSeconds', Number(e.target.value)))
+                  setWaves(
+                    updateWaveField(
+                      waves,
+                      wave.id,
+                      'startTimeSeconds',
+                      Math.max(0, Math.round(Number(e.target.value) * 60)),
+                    ),
+                  )
                 }
               />
             </div>
@@ -87,7 +94,7 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
               />
             </div>
             <div className="row">
-              <label>Min pace (min/mile)</label>
+              <label>Fastest pace (min/mile)</label>
               <div style={{ display: 'flex', gap: 6, width: '100%' }}>
                 <select
                   aria-label={`${wave.id} min pace minutes`}
@@ -132,7 +139,7 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
               </div>
             </div>
             <div className="row">
-              <label>Max pace (min/mile)</label>
+              <label>Slowest pace (min/mile)</label>
               <div style={{ display: 'flex', gap: 6, width: '100%' }}>
                 <select
                   aria-label={`${wave.id} max pace minutes`}

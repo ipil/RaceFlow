@@ -58,12 +58,12 @@ export default function App() {
 
   const [simTime, setSimTime] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(20);
   const [selectedDefaultMapUrl, setSelectedDefaultMapUrl] = useState<string>(
     DEFAULT_MAP_OPTIONS[0].url,
   );
-  const [densityRadiusMeters, setDensityRadiusMeters] = useState(5);
-  const [maxDensityColorValue, setMaxDensityColorValue] = useState(10);
+  const [densityRadiusMeters, setDensityRadiusMeters] = useState(15);
+  const [maxDensityColorValue, setMaxDensityColorValue] = useState(20);
   const [error, setError] = useState<string | null>(null);
 
   const rafRef = useRef<number | null>(null);
@@ -177,13 +177,56 @@ export default function App() {
         <h1>RaceFlow</h1>
 
         <div className="panel">
+          <p>
+            This program simulates a flow of runners through a race course to visualize points of
+            congestion along the course. Each dot represents a runner, and the color of each dot
+            represents the number of runners within a selected radius of the dot at every point in
+            time.
+          </p>
+          <p><strong>To use the tool:</strong></p>
+          <p>
+            <strong>1. Choose a Map</strong><br />
+            Feel free to select an example course map from the drop-down menu or upload your own
+            map as a .gpx file.
+          </p>
+          <p>
+            <strong>2. Configure the Starting Waves</strong><br />
+            You can add any number of starting waves of runners, each of which can start at any
+            time and can have any number of runners.
+          </p>
+          <p>
+            Each wave is characterized by a fastest pace and a slowest pace; for example, a first
+            wave may be faster than 8:30/mile and a second wave may be between 8:31/mile and
+            11:00/mile.
+          </p>
+          <p>
+            In each wave, each runner&apos;s pace is randomly selected from the paces in the
+            corresponding range of paces.
+          </p>
+          <p>
+            <strong>3. Select a Simulation Speed</strong><br />
+            By default, the simulation proceeds at 20x real-time speed. Feel free to adjust this
+            as desired.
+          </p>
+          <p>
+            <strong>4. Configure the Density Visualization</strong><br />
+            For purposes of color-coding the dots, the parameter Density radius (m) represents the
+            radius (in meters) of the area around each runner in which the number of neighboring
+            runners is counted. The parameter Max density (number of runners) represents the
+            (smallest) number of runners in the area for which the dot color will be red. Play
+            around with these values to get a good visualization. The default values are a good
+            starting point, at least for the default maps.
+          </p>
+        </div>
+
+        <div className="panel">
           <h2>Route</h2>
           <div className="row">
             <label htmlFor="gpx-upload">Upload GPX</label>
             <input id="gpx-upload" type="file" accept=".gpx,application/gpx+xml" onChange={onUploadFile} />
           </div>
           <div className="row">
-            <label htmlFor="default-map-select">Default map</label>
+            <label htmlFor="default-map-select">Select an Example Map</label>
             <select
               id="default-map-select"
               value={selectedDefaultMapUrl}
