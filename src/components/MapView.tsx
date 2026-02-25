@@ -67,18 +67,6 @@ export default function MapView({
   const lastTrackedSimTimeRef = useRef(0);
 
   const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
-  const activeSegmentMask = useMemo(() => {
-    if (!routeData || segmentCount <= 0) return new Uint8Array(0);
-    const out = new Uint8Array(segmentCount);
-    const exclusionM = 50;
-    for (let i = 0; i < segmentCount; i += 1) {
-      const segStart = i * segmentLengthMeters;
-      const segEnd = Math.min(routeData.total, (i + 1) * segmentLengthMeters);
-      out[i] = segStart >= exclusionM && segEnd <= routeData.total - exclusionM ? 1 : 0;
-    }
-    return out;
-  }, [routeData, segmentCount, segmentLengthMeters]);
-
   const segmentBreakpoints = useMemo(() => {
     if (!routeData || routeData.total <= 0) return [] as LatLng[];
     const count = Math.max(1, Math.ceil(routeData.total / segmentLengthMeters));
@@ -267,7 +255,6 @@ export default function MapView({
             segmentCount - 1,
             Math.max(0, Math.floor(distances[i] / segmentLengthMeters)),
           );
-          if (activeSegmentMask[segIdx] === 0) continue;
           const density = densityPerRunner[i];
           segmentTmpSum[segIdx] += density;
           segmentTmpCount[segIdx] += 1;
@@ -277,7 +264,6 @@ export default function MapView({
         }
 
         for (let i = 0; i < segmentCount; i += 1) {
-          if (activeSegmentMask[i] === 0) continue;
           if (segmentTmpCount[i] > 0) {
             const frameAvg = segmentTmpSum[i] / segmentTmpCount[i];
             segmentSumDensity[i] += frameAvg * deltaTime;
@@ -302,7 +288,6 @@ export default function MapView({
         groupValues.fill(0);
 
         for (let i = 0; i < segmentCount; i += 1) {
-          if (activeSegmentMask[i] === 0) continue;
           const value =
             heatMetric === 'average'
               ? segmentWeight[i] > 0
@@ -320,7 +305,6 @@ export default function MapView({
         for (let i = 0; i < segmentCount; i += 1) {
           const p0 = segmentBreakpoints[i];
           const p1 = segmentBreakpoints[i + 1];
-          if (activeSegmentMask[i] === 0) continue;
           const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
           const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
           const value = groupValues[segToGroup[i]];
@@ -356,7 +340,6 @@ export default function MapView({
     maxDensityColorValue,
     segmentLengthMeters,
     segmentCount,
-    activeSegmentMask,
     segmentBreakpoints,
     segmentSpatialGroups,
     heatMetric,

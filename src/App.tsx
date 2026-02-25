@@ -181,7 +181,7 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <h1>RaceFlow</h1>
+        <h1>Race Route Visualizer</h1>
 
         <div className="panel">
           <p>
