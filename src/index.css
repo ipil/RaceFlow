@@ -88,6 +88,11 @@ select {
   height: 100vh;
 }
 
+.map-pane {
+  position: relative;
+  height: 100vh;
+}
+
 .map-root {
   width: 100%;
   height: 100%;
@@ -124,6 +129,19 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+.floating-controls {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 600;
+  width: min(360px, calc(100% - 28px));
+}
+
+.floating-controls .panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+}
+
 @media (max-width: 960px) {
   .app {
     grid-template-columns: 1fr;
@@ -141,7 +159,17 @@ select {
     height: 60vh;
   }
 
+  .map-pane {
+    height: 60vh;
+  }
+
   .map-root {
     height: 60vh;
+  }
+
+  .floating-controls {
+    top: 10px;
+    left: 10px;
+    width: min(360px, calc(100% - 20px));
   }
 }

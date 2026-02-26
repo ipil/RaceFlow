@@ -309,23 +309,6 @@ export default function App() {
           {error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{error}</div>}
         </div>
 
-        <Controls
-          simTime={simTime}
-          maxTime={maxTime}
-          playing={playing}
-          speed={speed}
-          onPlayPause={onPlayPause}
-          onReset={() => {
-            setPlaying(false);
-            setSimTime(0);
-          }}
-          onTimeChange={(t) => {
-            setPlaying(false);
-            setSimTime(Math.max(0, Math.min(maxTime, t)));
-          }}
-          onSpeedChange={(s) => setSpeed(s)}
-        />
-
         <WaveEditor waves={waves} setWaves={setWaves} />
 
         <RunnerDotColoring
@@ -370,19 +353,39 @@ export default function App() {
         </div>
       </aside>
 
-      <MapView
-        routeData={routeData}
-        runners={runners}
-        simTime={simTime}
-        playing={playing}
-        densityRadiusMeters={densityRadiusMeters}
-        thresholdRunnerDensity={thresholdRunnerDensity}
-        segmentLengthMeters={segmentLengthMeters}
-        heatMetric={heatMetric}
-        showRouteHeatmap={showRouteHeatmap}
-        averageRedThreshold={averageRedThreshold}
-        maxRedThreshold={maxRedThreshold}
-      />
+      <div className="map-pane">
+        <MapView
+          routeData={routeData}
+          runners={runners}
+          simTime={simTime}
+          playing={playing}
+          densityRadiusMeters={densityRadiusMeters}
+          thresholdRunnerDensity={thresholdRunnerDensity}
+          segmentLengthMeters={segmentLengthMeters}
+          heatMetric={heatMetric}
+          showRouteHeatmap={showRouteHeatmap}
+          averageRedThreshold={averageRedThreshold}
+          maxRedThreshold={maxRedThreshold}
+        />
+        <div className="floating-controls">
+          <Controls
+            simTime={simTime}
+            maxTime={maxTime}
+            playing={playing}
+            speed={speed}
+            onPlayPause={onPlayPause}
+            onReset={() => {
+              setPlaying(false);
+              setSimTime(0);
+            }}
+            onTimeChange={(t) => {
+              setPlaying(false);
+              setSimTime(Math.max(0, Math.min(maxTime, t)));
+            }}
+            onSpeedChange={(s) => setSpeed(s)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
