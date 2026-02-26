@@ -72,8 +72,8 @@ export default function App() {
     'active_avg',
   );
   const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
-  const [averageRedThreshold, setAverageRedThreshold] = useState(20);
-  const [maxRedThreshold, setMaxRedThreshold] = useState(20);
+  const [averageRedThreshold, setAverageRedThreshold] = useState(1.5);
+  const [maxRedThreshold, setMaxRedThreshold] = useState(1.5);
   const [error, setError] = useState<string | null>(null);
 
   const rafRef = useRef<number | null>(null);

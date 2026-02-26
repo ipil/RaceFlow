@@ -34,49 +34,6 @@ function densityToColor(norm: number): string {
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 
-function pointToSegmentDistSq(
-  px: number,
-  py: number,
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-): number {
-  const abx = bx - ax;
-  const aby = by - ay;
-  const apx = px - ax;
-  const apy = py - ay;
-  const abLenSq = abx * abx + aby * aby;
-  if (abLenSq <= 1e-9) {
-    const dx = px - ax;
-    const dy = py - ay;
-    return dx * dx + dy * dy;
-  }
-  const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
-  const cx = ax + t * abx;
-  const cy = ay + t * aby;
-  const dx = px - cx;
-  const dy = py - cy;
-  return dx * dx + dy * dy;
-}
-
-function segmentToSegmentDistSq(
-  a0x: number,
-  a0y: number,
-  a1x: number,
-  a1y: number,
-  b0x: number,
-  b0y: number,
-  b1x: number,
-  b1y: number,
-): number {
-  const d1 = pointToSegmentDistSq(a0x, a0y, b0x, b0y, b1x, b1y);
-  const d2 = pointToSegmentDistSq(a1x, a1y, b0x, b0y, b1x, b1y);
-  const d3 = pointToSegmentDistSq(b0x, b0y, a0x, a0y, a1x, a1y);
-  const d4 = pointToSegmentDistSq(b1x, b1y, a0x, a0y, a1x, a1y);
-  return Math.min(d1, d2, d3, d4);
-}
-
 export default function MapView({
   routeData,
   runners,
@@ -142,144 +99,23 @@ export default function MapView({
     if (!routeData || segmentCount <= 0 || segmentBreakpoints.length !== segmentCount + 1) {
       return { segToGroup: new Uint32Array(0), groupCount: 0 };
     }
-
-    const earthRadiusM = 6371000;
-    const refLatRad = (routeData.points[0].lat * Math.PI) / 180;
-    const cosRefLat = Math.cos(refLatRad);
-    const ax = new Float64Array(segmentCount);
-    const ay = new Float64Array(segmentCount);
-    const bx = new Float64Array(segmentCount);
-    const by = new Float64Array(segmentCount);
-    const ux = new Float64Array(segmentCount);
-    const uy = new Float64Array(segmentCount);
-    const mx = new Float64Array(segmentCount);
-    const my = new Float64Array(segmentCount);
-    for (let i = 0; i < segmentCount; i += 1) {
-      const p0 = segmentBreakpoints[i];
-      const p1 = segmentBreakpoints[i + 1];
-      const x0 = earthRadiusM * ((p0.lng * Math.PI) / 180) * cosRefLat;
-      const y0 = earthRadiusM * ((p0.lat * Math.PI) / 180);
-      const x1 = earthRadiusM * ((p1.lng * Math.PI) / 180) * cosRefLat;
-      const y1 = earthRadiusM * ((p1.lat * Math.PI) / 180);
-      ax[i] = x0;
-      ay[i] = y0;
-      bx[i] = x1;
-      by[i] = y1;
-      const dx = x1 - x0;
-      const dy = y1 - y0;
-      const len = Math.max(1e-9, Math.hypot(dx, dy));
-      ux[i] = dx / len;
-      uy[i] = dy / len;
-      mx[i] = (x0 + x1) * 0.5;
-      my[i] = (y0 + y1) * 0.5;
-    }
-
-    const parent = new Int32Array(segmentCount);
-    const rank = new Int8Array(segmentCount);
-    for (let i = 0; i < segmentCount; i += 1) parent[i] = i;
-
-    const find = (x: number): number => {
-      let p = x;
-      while (parent[p] !== p) {
-        parent[p] = parent[parent[p]];
-        p = parent[p];
-      }
-      return p;
-    };
-    const union = (a: number, b: number) => {
-      const ra = find(a);
-      const rb = find(b);
-      if (ra === rb) return;
-      if (rank[ra] < rank[rb]) {
-        parent[ra] = rb;
-      } else if (rank[ra] > rank[rb]) {
-        parent[rb] = ra;
-      } else {
-        parent[rb] = ra;
-        rank[ra] += 1;
-      }
-    };
-
-    const toleranceM = Math.max(1.5, Math.min(5, segmentLengthMeters * 0.5));
-    const toleranceSq = toleranceM * toleranceM;
-    const minRouteSeparationM = Math.max(20, segmentLengthMeters * 4);
-    const minParallelCos = 0.96;
-    const maxMidpointSeparationM = Math.max(8, segmentLengthMeters * 2);
-    const maxMidpointSeparationSq = maxMidpointSeparationM * maxMidpointSeparationM;
-    const cellSizeM = toleranceM;
-    const sampleStepM = Math.max(0.75, Math.min(2, segmentLengthMeters * 0.5));
-    const cells = new Map<string, number[]>();
-
-    for (let i = 0; i < segmentCount; i += 1) {
-      const dx = bx[i] - ax[i];
-      const dy = by[i] - ay[i];
-      const segLen = Math.hypot(dx, dy);
-      const sampleCount = Math.max(1, Math.ceil(segLen / sampleStepM));
-      const candidateSet = new Set<number>();
-      const touchedKeys = new Set<string>();
-
-      for (let s = 0; s <= sampleCount; s += 1) {
-        const t = s / sampleCount;
-        const x = ax[i] + dx * t;
-        const y = ay[i] + dy * t;
-        const cx = Math.floor(x / cellSizeM);
-        const cy = Math.floor(y / cellSizeM);
-
-        for (let ox = -1; ox <= 1; ox += 1) {
-          for (let oy = -1; oy <= 1; oy += 1) {
-            const key = `${cx + ox}:${cy + oy}`;
-            const list = cells.get(key);
-            if (!list) continue;
-            for (let k = 0; k < list.length; k += 1) candidateSet.add(list[k]);
-          }
-        }
-
-        touchedKeys.add(`${cx}:${cy}`);
-      }
-
-      candidateSet.forEach((j) => {
-        const routeSeparationM = Math.abs(i - j) * segmentLengthMeters;
-        // Prevent contiguous route neighbors from chaining the entire course into one group.
-        if (routeSeparationM < minRouteSeparationM) return;
-        const parallelCos = Math.abs(ux[i] * ux[j] + uy[i] * uy[j]);
-        if (parallelCos < minParallelCos) return;
-        const mdx = mx[i] - mx[j];
-        const mdy = my[i] - my[j];
-        if (mdx * mdx + mdy * mdy > maxMidpointSeparationSq) return;
-        const distSq = segmentToSegmentDistSq(
-          ax[i],
-          ay[i],
-          bx[i],
-          by[i],
-          ax[j],
-          ay[j],
-          bx[j],
-          by[j],
-        );
-        if (distSq <= toleranceSq) union(i, j);
-      });
-
-      touchedKeys.forEach((key) => {
-        const list = cells.get(key);
-        if (list) {
-          list.push(i);
-        } else {
-          cells.set(key, [i]);
-        }
-      });
-    }
-
     const segToGroup = new Uint32Array(segmentCount);
-    const rootToGroup = new Map<number, number>();
+    const keyToGroup = new Map<string, number>();
     let groupCount = 0;
+    const q = (v: number) => Math.round(v * 1e6);
+
     for (let i = 0; i < segmentCount; i += 1) {
-      const root = find(i);
-      const existing = rootToGroup.get(root);
+      const a = segmentBreakpoints[i];
+      const b = segmentBreakpoints[i + 1];
+      const aKey = `${q(a.lat)},${q(a.lng)}`;
+      const bKey = `${q(b.lat)},${q(b.lng)}`;
+      const key = aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
+      const existing = keyToGroup.get(key);
       if (existing !== undefined) {
         segToGroup[i] = existing;
       } else {
         segToGroup[i] = groupCount;
-        rootToGroup.set(root, groupCount);
+        keyToGroup.set(key, groupCount);
         groupCount += 1;
       }
     }
@@ -575,10 +411,7 @@ export default function MapView({
         for (let i = 0; i < segmentCount; i += 1) {
           const hasSeenRunner = segmentSeen[i] === 1;
           if (!hasSeenRunner) continue;
-          const value =
-            heatMetric === 'average'
-              ? avgModeValue[i]
-              : segmentMaxDensity[i];
+          const value = heatMetric === 'average' ? avgModeValue[i] : segmentMaxDensity[i];
           const g = segToGroup[i];
           groupSeen[g] = 1;
           if (value > groupValues[g]) {
