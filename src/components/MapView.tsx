@@ -398,14 +398,6 @@ export default function MapView({
     <div className="map-wrap">
       <div ref={mapRootRef} className="map-root" />
       <canvas ref={canvasRef} className="overlay-canvas" />
-      <div className="legend">
-        <div><strong>Runner Density</strong></div>
-        <div className="legend-bar" />
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>{(1 / Math.max(1e-6, densityRadiusMeters)).toFixed(2)} runners/m</span>
-          <span>{thresholdRunnerDensity} runners/m</span>
-        </div>
-      </div>
     </div>
   );
 }

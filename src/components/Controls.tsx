@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import CollapsiblePanel from './CollapsiblePanel';
 
 type ControlsProps = {
   simTime: number;
@@ -39,53 +38,68 @@ export default function Controls({
   const timeLabel = useMemo(() => formatTime(simTime), [simTime]);
 
   return (
-    <CollapsiblePanel title="Simulation Controls">
-      <div className="row">
-        <button type="button" onClick={onPlayPause}>
+    <details className="panel collapsible-panel" open>
+      <summary className="controls-summary">
+        <h2>Simulation Controls</h2>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPlayPause();
+          }}
+        >
           {playing ? 'Pause' : 'Play'}
         </button>
-        <button type="button" onClick={onReset}>
-          Reset
-        </button>
-      </div>
-      <div className="row controls-time">
-        <label>Current time: {timeLabel}</label>
-      </div>
-      <div className="row">
-        <label htmlFor="sim-time-range">Time</label>
-        <input
-          id="sim-time-range"
-          type="range"
-          min={0}
-          max={Math.max(1, maxTime)}
-          step={0.1}
-          value={Math.min(simTime, Math.max(1, maxTime))}
-          onChange={(e) => onTimeChange(Number(e.target.value))}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="sim-speed">Simulation Speed</label>
-        <select
-          id="sim-speed"
-          value={speed}
-          onChange={(e) => onSpeedChange(Number(e.target.value))}
-        >
-          {SPEEDS.map((s) => (
-            <option key={s} value={s}>
+      </summary>
+      <div className="collapsible-body">
+        <div className="row">
+          <button type="button" onClick={onPlayPause}>
+            {playing ? 'Pause' : 'Play'}
+          </button>
+          <button type="button" onClick={onReset}>
+            Reset
+          </button>
+        </div>
+        <div className="row controls-time">
+          <label>Current time: {timeLabel}</label>
+        </div>
+        <div className="row">
+          <label htmlFor="sim-time-range">Time</label>
+          <input
+            id="sim-time-range"
+            type="range"
+            min={0}
+            max={Math.max(1, maxTime)}
+            step={0.1}
+            value={Math.min(simTime, Math.max(1, maxTime))}
+            onChange={(e) => onTimeChange(Number(e.target.value))}
+          />
+        </div>
+        <div className="row">
+          <label htmlFor="sim-speed">Simulation Speed</label>
+          <select
+            id="sim-speed"
+            value={speed}
+            onChange={(e) => onSpeedChange(Number(e.target.value))}
+          >
+            {SPEEDS.map((s) => (
+              <option key={s} value={s}>
               {s}x
-            </option>
-          ))}
-        </select>
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="row">
+          <label htmlFor="show-route-heatmap">Display route-centric density heat map</label>
+          <input
+            id="show-route-heatmap"
+            type="checkbox"
+            checked={showRouteHeatmap}
+            onChange={(e) => onShowRouteHeatmapChange(e.target.checked)}
+          />
+        </div>
       </div>
-      <div className="row">
-        <label htmlFor="show-route-heatmap">Display route-centric density heat map</label>
-        <input
-          id="show-route-heatmap"
-          type="checkbox"
-          checked={showRouteHeatmap}
-          onChange={(e) => onShowRouteHeatmapChange(e.target.checked)}
-        />
-      </div>
-    </CollapsiblePanel>
+    </details>
   );
 }
