@@ -421,14 +421,22 @@ export default function MapView({
 
         ctx.globalAlpha = 1;
         ctx.lineCap = 'round';
+        const drawOrder: number[] = [];
         for (let i = 0; i < segmentCount; i += 1) {
+          const groupIdx = segToGroup[i];
+          const hasSeenRunner = segmentSeen[i] === 1;
+          if (!hasSeenRunner || groupSeen[groupIdx] === 0) continue;
+          drawOrder.push(i);
+        }
+        drawOrder.sort((a, b) => groupValues[segToGroup[a]] - groupValues[segToGroup[b]]);
+
+        for (let k = 0; k < drawOrder.length; k += 1) {
+          const i = drawOrder[k];
           const p0 = segmentBreakpoints[i];
           const p1 = segmentBreakpoints[i + 1];
           const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
           const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
           const groupIdx = segToGroup[i];
-          const hasSeenRunner = segmentSeen[i] === 1;
-          if (!hasSeenRunner || groupSeen[groupIdx] === 0) continue;
           const value = groupValues[groupIdx];
           const norm = value / denom;
           ctx.beginPath();
