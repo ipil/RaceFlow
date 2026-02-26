@@ -99,6 +99,8 @@ function createDefaultCourses(): CourseState[] {
   return [course1, course2];
 }
 
+const ONBOARDING_DISMISSED_KEY = 'raceflow_onboarding_dismissed';
+
 async function loadPresetCoursesWithRoutes(courses: CourseState[]): Promise<CourseState[]> {
   const loaded = await Promise.all(
     courses.map(async (course) => {
@@ -145,6 +147,14 @@ export default function App() {
   const [averageRedThreshold, setAverageRedThreshold] = useState(1.5);
   const [maxRedThreshold, setMaxRedThreshold] = useState(1.5);
   const [runId, setRunId] = useState(0);
+  const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(ONBOARDING_DISMISSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const rafRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
@@ -305,6 +315,16 @@ export default function App() {
     setCourses(loadedCourses);
     setRunId((v) => v + 1);
     setPlaying(true);
+  };
+
+  const dismissOnboardingHint = () => {
+    if (onboardingDismissed) return;
+    setOnboardingDismissed(true);
+    try {
+      window.localStorage.setItem(ONBOARDING_DISMISSED_KEY, '1');
+    } catch {
+      // Ignore localStorage write failures.
+    }
   };
 
   const totalRunners = useMemo(
@@ -525,7 +545,9 @@ export default function App() {
             maxTime={maxTime}
             playing={playing}
             speed={speed}
+            showOnboardingHint={!onboardingDismissed}
             onRunExampleSimulation={() => void onRunExampleSimulation()}
+            onDismissOnboardingHint={dismissOnboardingHint}
             onPlayPause={onPlayPause}
             onReset={() => {
               setPlaying(false);

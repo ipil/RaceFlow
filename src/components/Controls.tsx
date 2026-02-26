@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import OnboardingCallout from './OnboardingCallout';
 
 type ControlsProps = {
   simTime: number;
@@ -6,7 +7,9 @@ type ControlsProps = {
   playing: boolean;
   speed: number;
   showRouteHeatmap: boolean;
+  showOnboardingHint: boolean;
   onRunExampleSimulation: () => void;
+  onDismissOnboardingHint: () => void;
   onPlayPause: () => void;
   onReset: () => void;
   onTimeChange: (time: number) => void;
@@ -30,7 +33,9 @@ export default function Controls({
   playing,
   speed,
   showRouteHeatmap,
+  showOnboardingHint,
   onRunExampleSimulation,
+  onDismissOnboardingHint,
   onPlayPause,
   onReset,
   onTimeChange,
@@ -49,6 +54,9 @@ export default function Controls({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (!playing) {
+                onDismissOnboardingHint();
+              }
               onPlayPause();
             }}
           >
@@ -67,8 +75,18 @@ export default function Controls({
         </div>
       </summary>
       <div className="collapsible-body">
+        {showOnboardingHint && (
+          <OnboardingCallout onDismiss={onDismissOnboardingHint} />
+        )}
         <div className="row">
-          <button type="button" className="quick-start-btn" onClick={onRunExampleSimulation}>
+          <button
+            type="button"
+            className="quick-start-btn"
+            onClick={() => {
+              onDismissOnboardingHint();
+              onRunExampleSimulation();
+            }}
+          >
             ▶ Run Example Simulation
           </button>
         </div>
