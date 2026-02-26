@@ -191,6 +191,7 @@ export default function MapView({
 
     const toleranceM = Math.max(1.5, Math.min(5, segmentLengthMeters * 0.5));
     const toleranceSq = toleranceM * toleranceM;
+    const minRouteSeparationM = Math.max(20, segmentLengthMeters * 4);
     const cellSizeM = toleranceM;
     const sampleStepM = Math.max(0.75, Math.min(2, segmentLengthMeters * 0.5));
     const cells = new Map<string, number[]>();
@@ -223,6 +224,9 @@ export default function MapView({
       }
 
       candidateSet.forEach((j) => {
+        const routeSeparationM = Math.abs(i - j) * segmentLengthMeters;
+        // Prevent contiguous route neighbors from chaining the entire course into one group.
+        if (routeSeparationM < minRouteSeparationM) return;
         const distSq = segmentToSegmentDistSq(
           ax[i],
           ay[i],
