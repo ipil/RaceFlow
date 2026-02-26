@@ -435,8 +435,12 @@ export default function MapView({
 
         const drawOrder = [...geometry.entries];
         drawOrder.sort((a, b) => {
-          const va = heatMetric === 'average' ? avgValues[a.groupIdx] : maxDensity[a.groupIdx];
-          const vb = heatMetric === 'average' ? avgValues[b.groupIdx] : maxDensity[b.groupIdx];
+          const va = heatMetric === 'average'
+            ? (avgValues[a.groupIdx] > 0 ? avgValues[a.groupIdx] : frameDensity[a.groupIdx])
+            : Math.max(maxDensity[a.groupIdx], frameDensity[a.groupIdx]);
+          const vb = heatMetric === 'average'
+            ? (avgValues[b.groupIdx] > 0 ? avgValues[b.groupIdx] : frameDensity[b.groupIdx])
+            : Math.max(maxDensity[b.groupIdx], frameDensity[b.groupIdx]);
           return va - vb;
         });
 
@@ -444,9 +448,12 @@ export default function MapView({
         ctx.lineCap = 'round';
         for (let i = 0; i < drawOrder.length; i += 1) {
           const seg = drawOrder[i];
-          if (seen[seg.groupIdx] === 0) continue;
+          const groupSeen = seen[seg.groupIdx] === 1 || frameDensity[seg.groupIdx] > 0;
+          if (!groupSeen) continue;
 
-          const value = heatMetric === 'average' ? avgValues[seg.groupIdx] : maxDensity[seg.groupIdx];
+          const value = heatMetric === 'average'
+            ? (avgValues[seg.groupIdx] > 0 ? avgValues[seg.groupIdx] : frameDensity[seg.groupIdx])
+            : Math.max(maxDensity[seg.groupIdx], frameDensity[seg.groupIdx]);
           const norm = value / denom;
 
           const pt0 = map.latLngToContainerPoint([seg.p0.lat, seg.p0.lng]);
