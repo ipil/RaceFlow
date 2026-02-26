@@ -6,6 +6,7 @@ type ControlsProps = {
   playing: boolean;
   speed: number;
   showRouteHeatmap: boolean;
+  onRunExampleSimulation: () => void;
   onPlayPause: () => void;
   onReset: () => void;
   onTimeChange: (time: number) => void;
@@ -29,6 +30,7 @@ export default function Controls({
   playing,
   speed,
   showRouteHeatmap,
+  onRunExampleSimulation,
   onPlayPause,
   onReset,
   onTimeChange,
@@ -65,6 +67,11 @@ export default function Controls({
         </div>
       </summary>
       <div className="collapsible-body">
+        <div className="row">
+          <button type="button" className="quick-start-btn" onClick={onRunExampleSimulation}>
+            ▶ Run Example Simulation
+          </button>
+        </div>
         <div className="row controls-time">
           <label>Current time: {timeLabel}</label>
         </div>

@@ -99,6 +99,37 @@ function createDefaultCourses(): CourseState[] {
   return [course1, course2];
 }
 
+async function loadPresetCoursesWithRoutes(courses: CourseState[]): Promise<CourseState[]> {
+  const loaded = await Promise.all(
+    courses.map(async (course) => {
+      try {
+        const resp = await fetch(course.selectedDefaultMapUrl);
+        const text = await resp.text();
+        const points = parseGpxToLatLngs(text);
+        const built = buildCumulativeDistances(points);
+        return {
+          ...course,
+          routeData: built,
+          error: null,
+          runners: generateRunners(course.waves).map((r) => ({
+            ...r,
+            id: `${course.id}-${r.id}`,
+          })),
+        };
+      } catch {
+        return {
+          ...course,
+          routeData: null,
+          runners: [],
+          error: 'Could not load default GPX route.',
+        };
+      }
+    }),
+  );
+
+  return loaded;
+}
+
 export default function App() {
   const nextCourseNumRef = useRef(3);
   const [courses, setCourses] = useState<CourseState[]>(createDefaultCourses);
@@ -261,6 +292,18 @@ export default function App() {
       );
       setRunId((v) => v + 1);
     }
+    setPlaying(true);
+  };
+
+  const onRunExampleSimulation = async () => {
+    setPlaying(false);
+    setSpeed(20);
+    setSimTime(0);
+
+    const presetCourses = createDefaultCourses();
+    const loadedCourses = await loadPresetCoursesWithRoutes(presetCourses);
+    setCourses(loadedCourses);
+    setRunId((v) => v + 1);
     setPlaying(true);
   };
 
@@ -482,6 +525,7 @@ export default function App() {
             maxTime={maxTime}
             playing={playing}
             speed={speed}
+            onRunExampleSimulation={() => void onRunExampleSimulation()}
             onPlayPause={onPlayPause}
             onReset={() => {
               setPlaying(false);
