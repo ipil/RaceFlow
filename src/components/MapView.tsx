@@ -113,6 +113,7 @@ export default function MapView({
   const segmentSeenRef = useRef<Uint8Array>(new Uint8Array(0));
   const segmentFrameCountRef = useRef<Uint32Array>(new Uint32Array(0));
   const avgValueRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentFrameDensityRef = useRef<Float32Array>(new Float32Array(0));
   const lastTrackedSimTimeRef = useRef(0);
 
   const courseTmpCountsRef = useRef<Array<Uint16Array>>([]);
@@ -224,6 +225,7 @@ export default function MapView({
     segmentSeenRef.current = new Uint8Array(groupCount);
     segmentFrameCountRef.current = new Uint32Array(groupCount);
     avgValueRef.current = new Float32Array(groupCount);
+    segmentFrameDensityRef.current = new Float32Array(groupCount);
     lastTrackedSimTimeRef.current = 0;
 
     const courseTmpCounts: Array<Uint16Array> = new Array(courses.length);
@@ -384,6 +386,7 @@ export default function MapView({
       const seen = segmentSeenRef.current;
       const frameCount = segmentFrameCountRef.current;
       const avgValues = avgValueRef.current;
+      const frameDensity = segmentFrameDensityRef.current;
 
       if (simTime < lastTrackedSimTimeRef.current) {
         nonZeroSum.fill(0);
@@ -391,9 +394,11 @@ export default function MapView({
         maxDensity.fill(0);
         seen.fill(0);
         frameCount.fill(0);
+        frameDensity.fill(0);
       }
 
-      if (playing && geometry.groupCount > 0) {
+      if (geometry.groupCount > 0) {
+        const isForwardStep = simTime > lastTrackedSimTimeRef.current + 1e-6;
         for (let g = 0; g < geometry.groupCount; g += 1) {
           const members = geometry.groupMembers[g];
           let countSum = 0;
@@ -402,14 +407,18 @@ export default function MapView({
             countSum += courseTmpCounts[member.courseIdx][member.segIdx] || 0;
           }
           const density = countSum / segmentLengthMeters;
-          frameCount[g] += 1;
-          if (density > 0) {
-            seen[g] = 1;
-            nonZeroSum[g] += density;
-            nonZeroCount[g] += 1;
-          }
-          if (density > maxDensity[g]) {
-            maxDensity[g] = density;
+          frameDensity[g] = density;
+
+          if (isForwardStep) {
+            frameCount[g] += 1;
+            if (density > 0) {
+              seen[g] = 1;
+              nonZeroSum[g] += density;
+              nonZeroCount[g] += 1;
+            }
+            if (density > maxDensity[g]) {
+              maxDensity[g] = density;
+            }
           }
         }
       }

@@ -61,6 +61,8 @@ const DEFAULT_WAVES: Wave[] = [
 const DEFAULT_MAP_OPTIONS = [
   { id: 'north-first', label: 'Heart to Start 5K - north first', url: '/default-north-first.gpx' },
   { id: 'south-first', label: 'Heart to Start 5K - south first', url: '/default-south-first.gpx' },
+  { id: '10k-north-first', label: 'Heart to Start 10K - North First', url: '/default-10k-north-first.gpx' },
+  { id: '10k-south-first', label: 'Heart to Start 10K - South First', url: '/default-10k-south-first.gpx' },
 ] as const;
 
 function cloneDefaultWaves(): Wave[] {
