@@ -224,6 +224,56 @@ select {
   backdrop-filter: blur(2px);
 }
 
+.runner-legend {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 550;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #d4dbe3;
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 180px;
+}
+
+.runner-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.runner-legend-info {
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid #94a3b8;
+  background: #fff;
+  color: #334155;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.runner-legend-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(120 70% 45%), hsl(40 85% 52%), hsl(0 85% 48%));
+}
+
+.runner-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #334155;
+  margin-top: 4px;
+}
+
 @media (max-width: 960px) {
   .app {
     grid-template-columns: 1fr;
@@ -253,5 +303,11 @@ select {
     bottom: 10px;
     left: 10px;
     width: min(360px, calc(100% - 20px));
+  }
+
+  .runner-legend {
+    right: 10px;
+    bottom: 10px;
+    min-width: 160px;
   }
 }

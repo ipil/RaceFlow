@@ -5,6 +5,7 @@ import WaveEditor from './components/WaveEditor';
 import Controls from './components/Controls';
 import RouteCongestionStats from './components/RouteCongestionStats';
 import RunnerDotColoring from './components/RunnerDotColoring';
+import RunnerDensityLegend from './components/RunnerDensityLegend';
 import CollapsiblePanel from './components/CollapsiblePanel';
 import {
   buildCumulativeDistances,
@@ -562,6 +563,7 @@ export default function App() {
             onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
           />
         </div>
+        <RunnerDensityLegend />
       </div>
     </div>
   );
