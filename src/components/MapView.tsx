@@ -262,6 +262,8 @@ export default function MapView({
           const frameDensity = segmentTmpCount[i] / segmentLengthMeters;
           if (frameDensity > 0) {
             segmentSeen[i] = 1;
+            segmentNonZeroSum[i] += frameDensity;
+            segmentNonZeroCount[i] += 1;
           }
           if (segmentSeen[i] === 0) {
             continue;
