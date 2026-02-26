@@ -6,6 +6,11 @@ import Controls from './components/Controls';
 import RouteCongestionStats from './components/RouteCongestionStats';
 import RunnerDotColoring from './components/RunnerDotColoring';
 import RunnerDensityLegend from './components/RunnerDensityLegend';
+import {
+  DEFAULT_MAP_OPTIONS,
+  cloneDefaultWaves,
+  createDefaultCoursePresets,
+} from './components/Presets';
 import CollapsiblePanel from './components/CollapsiblePanel';
 import {
   buildCumulativeDistances,
@@ -29,47 +34,6 @@ type CourseState = {
   error: string | null;
 };
 
-const KM_PER_MILE = 1.609344;
-
-function paceFromMinMile(minutes: number, seconds: number): number {
-  return (minutes * 60 + seconds) / KM_PER_MILE;
-}
-
-const DEFAULT_WAVES: Wave[] = [
-  {
-    id: 'wave-1',
-    startTimeSeconds: 600,
-    runnerCount: 89,
-    minPaceSecPerKm: paceFromMinMile(5, 51),
-    maxPaceSecPerKm: paceFromMinMile(8, 30),
-  },
-  {
-    id: 'wave-2',
-    startTimeSeconds: 900,
-    runnerCount: 158,
-    minPaceSecPerKm: paceFromMinMile(8, 31),
-    maxPaceSecPerKm: paceFromMinMile(11, 0),
-  },
-  {
-    id: 'wave-3',
-    startTimeSeconds: 1200,
-    runnerCount: 462,
-    minPaceSecPerKm: paceFromMinMile(11, 0),
-    maxPaceSecPerKm: paceFromMinMile(20, 0),
-  },
-];
-
-const DEFAULT_MAP_OPTIONS = [
-  { id: 'north-first', label: 'Heart to Start 5K - north first', url: '/default-north-first.gpx' },
-  { id: 'south-first', label: 'Heart to Start 5K - south first', url: '/default-south-first.gpx' },
-  { id: '10k-north-first', label: 'Heart to Start 10K - North First', url: '/default-10k-north-first.gpx' },
-  { id: '10k-south-first', label: 'Heart to Start 10K - South First', url: '/default-10k-south-first.gpx' },
-] as const;
-
-function cloneDefaultWaves(): Wave[] {
-  return DEFAULT_WAVES.map((w) => ({ ...w }));
-}
-
 function createCourse(courseNum: number): CourseState {
   return {
     id: `course-${courseNum}`,
@@ -82,22 +46,12 @@ function createCourse(courseNum: number): CourseState {
 }
 
 function createDefaultCourses(): CourseState[] {
-  const course1 = createCourse(1);
-  const course2 = createCourse(2);
-  const baseWave = DEFAULT_WAVES[0];
-
-  course2.selectedDefaultMapUrl = '/default-10k-north-first.gpx';
-  course2.waves = [
-    {
-      id: 'wave-1',
-      startTimeSeconds: 0,
-      runnerCount: 450,
-      minPaceSecPerKm: baseWave.minPaceSecPerKm,
-      maxPaceSecPerKm: baseWave.maxPaceSecPerKm,
-    },
-  ];
-
-  return [course1, course2];
+  return createDefaultCoursePresets().map((preset, idx) => ({
+    ...createCourse(idx + 1),
+    id: preset.id,
+    selectedDefaultMapUrl: preset.selectedDefaultMapUrl,
+    waves: preset.waves.map((w) => ({ ...w })),
+  }));
 }
 
 const ONBOARDING_DISMISSED_KEY = 'raceflow_onboarding_dismissed';
@@ -345,6 +299,9 @@ export default function App() {
 
         <CollapsiblePanel title="README">
           <h3>Quick Start</h3>
+          <p>
+            Want a one-click demo? Use <strong>▶ Run Example Simulation</strong> in Simulation Controls.
+          </p>
           <ol>
             <li><strong>Choose a Map</strong> — select a sample course or upload a <code>.gpx</code> file.</li>
             <li>
