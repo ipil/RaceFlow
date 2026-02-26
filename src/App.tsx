@@ -37,21 +37,21 @@ function paceFromMinMile(minutes: number, seconds: number): number {
 const DEFAULT_WAVES: Wave[] = [
   {
     id: 'wave-1',
-    startTimeSeconds: 0,
+    startTimeSeconds: 600,
     runnerCount: 89,
     minPaceSecPerKm: paceFromMinMile(5, 51),
     maxPaceSecPerKm: paceFromMinMile(8, 30),
   },
   {
     id: 'wave-2',
-    startTimeSeconds: 300,
+    startTimeSeconds: 900,
     runnerCount: 158,
     minPaceSecPerKm: paceFromMinMile(8, 31),
     maxPaceSecPerKm: paceFromMinMile(11, 0),
   },
   {
     id: 'wave-3',
-    startTimeSeconds: 600,
+    startTimeSeconds: 1200,
     runnerCount: 462,
     minPaceSecPerKm: paceFromMinMile(11, 0),
     maxPaceSecPerKm: paceFromMinMile(20, 0),
@@ -80,9 +80,28 @@ function createCourse(courseNum: number): CourseState {
   };
 }
 
+function createDefaultCourses(): CourseState[] {
+  const course1 = createCourse(1);
+  const course2 = createCourse(2);
+  const baseWave = DEFAULT_WAVES[0];
+
+  course2.selectedDefaultMapUrl = '/default-10k-north-first.gpx';
+  course2.waves = [
+    {
+      id: 'wave-1',
+      startTimeSeconds: 0,
+      runnerCount: 450,
+      minPaceSecPerKm: baseWave.minPaceSecPerKm,
+      maxPaceSecPerKm: baseWave.maxPaceSecPerKm,
+    },
+  ];
+
+  return [course1, course2];
+}
+
 export default function App() {
-  const nextCourseNumRef = useRef(2);
-  const [courses, setCourses] = useState<CourseState[]>([createCourse(1)]);
+  const nextCourseNumRef = useRef(3);
+  const [courses, setCourses] = useState<CourseState[]>(createDefaultCourses);
 
   const [simTime, setSimTime] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -203,8 +222,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (courses.length === 0) return;
-    void onLoadDefaultRoute(courses[0].id, courses[0].selectedDefaultMapUrl);
+    for (let i = 0; i < courses.length; i += 1) {
+      void onLoadDefaultRoute(courses[i].id, courses[i].selectedDefaultMapUrl);
+    }
   }, []);
 
   const addCourse = () => {
