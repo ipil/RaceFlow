@@ -273,7 +273,7 @@ export default function App() {
 
           <h3>What This Tool Simulates</h3>
           <p>
-            The simulator models runners progressing along one or more race courses over time.
+            The simulator models runners progressing along a race course over time.
             Each runner is assigned a pace randomly sampled from the pace range of its starting wave.
           </p>
           <p>Two complementary congestion views are available:</p>
@@ -281,6 +281,69 @@ export default function App() {
             <li><strong>Runner-centric density (always enabled)</strong> — crowding experienced by individual runners.</li>
             <li><strong>Route-centric density (selectively enabled)</strong> — congestion patterns along the course itself.</li>
           </ul>
+
+          <h3>Core Elements</h3>
+          <h4>Runner Density</h4>
+          <p>Runner density measures how crowded an area is.</p>
+          <p>For a given runner:</p>
+          <ul>
+            <li>a circular neighborhood is defined using a selectable density radius</li>
+            <li>nearby runners inside that radius are counted</li>
+            <li>dot color represents the resulting number density</li>
+          </ul>
+          <p>Higher density -&gt; warmer colors.</p>
+
+          <h4>Starting Waves</h4>
+          <p>A starting wave specifies:</p>
+          <ul>
+            <li>start time</li>
+            <li>number of runners</li>
+            <li>fastest and slowest pace</li>
+          </ul>
+          <p>
+            Each runner&apos;s pace is randomly drawn from the wave&apos;s pace range, producing realistic
+            spreading and overtaking behavior.
+          </p>
+
+          <h3>Controls Reference</h3>
+          <h4>Map Selection</h4>
+          <p>Load an example course or upload a <code>.gpx</code> route.</p>
+          <p>
+            To simulate multiple courses at once, click <strong>Add course</strong>. Each added course has its own
+            map selection and wave settings, and all courses run together on the same map view.
+          </p>
+
+          <h4>Simulation Speed</h4>
+          <p>Controls how quickly simulated race time advances. Default: 20x real time.</p>
+
+          <h4>Runner Dot Coloring (Runner-Centric View)</h4>
+          <ul>
+            <li><strong>Density radius (m)</strong> Radius used to count neighboring runners.</li>
+            <li><strong>Threshold runner density</strong> Minimum density mapped to the maximum (red) color.</li>
+          </ul>
+          <p>Adjust these parameters to highlight different congestion scales.</p>
+
+          <h4>Route Congestion Stats (Route-Centric View)</h4>
+          <p>Enable the heat map to analyze congestion along the course.</p>
+          <p>The route is divided into segments of configurable length.</p>
+          <p>Visualization modes</p>
+          <ul>
+            <li><strong>Average Density</strong> Mean runner density across all frames in which runners occupy a segment.</li>
+            <li><strong>Maximum Density</strong> Highest density observed in a segment up to the current simulation time.</li>
+          </ul>
+          <p><strong>Threshold segment density</strong> Minimum density mapped to the maximum (red) segment color.</p>
+
+          <h3>Interpreting Results</h3>
+          <p>
+            Out-and-back sections naturally exhibit higher measured densities because runners occupy the same
+            physical corridor in opposing directions. High density in these regions is not necessarily problematic.
+            High density in regions where the path is relatively straight and/or wide is also generally not too
+            problematic.
+          </p>
+          <p>
+            The tool is most useful for identifying undesirable congestion, such as congestion occurring in narrow,
+            constrained, or highly curved portions of a course.
+          </p>
         </CollapsiblePanel>
 
         <div className="row">

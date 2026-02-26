@@ -41,26 +41,30 @@ export default function Controls({
     <details className="panel collapsible-panel" open>
       <summary className="controls-summary">
         <h2>Simulation Controls</h2>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onPlayPause();
-          }}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-      </summary>
-      <div className="collapsible-body">
-        <div className="row">
-          <button type="button" onClick={onPlayPause}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onPlayPause();
+            }}
+          >
             {playing ? 'Pause' : 'Play'}
           </button>
-          <button type="button" onClick={onReset}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onReset();
+            }}
+          >
             Reset
           </button>
         </div>
+      </summary>
+      <div className="collapsible-body">
         <div className="row controls-time">
           <label>Current time: {timeLabel}</label>
         </div>
