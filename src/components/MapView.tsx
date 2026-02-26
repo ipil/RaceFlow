@@ -150,6 +150,10 @@ export default function MapView({
     const ay = new Float64Array(segmentCount);
     const bx = new Float64Array(segmentCount);
     const by = new Float64Array(segmentCount);
+    const ux = new Float64Array(segmentCount);
+    const uy = new Float64Array(segmentCount);
+    const mx = new Float64Array(segmentCount);
+    const my = new Float64Array(segmentCount);
     for (let i = 0; i < segmentCount; i += 1) {
       const p0 = segmentBreakpoints[i];
       const p1 = segmentBreakpoints[i + 1];
@@ -161,6 +165,13 @@ export default function MapView({
       ay[i] = y0;
       bx[i] = x1;
       by[i] = y1;
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.max(1e-9, Math.hypot(dx, dy));
+      ux[i] = dx / len;
+      uy[i] = dy / len;
+      mx[i] = (x0 + x1) * 0.5;
+      my[i] = (y0 + y1) * 0.5;
     }
 
     const parent = new Int32Array(segmentCount);
@@ -192,6 +203,9 @@ export default function MapView({
     const toleranceM = Math.max(1.5, Math.min(5, segmentLengthMeters * 0.5));
     const toleranceSq = toleranceM * toleranceM;
     const minRouteSeparationM = Math.max(20, segmentLengthMeters * 4);
+    const minParallelCos = 0.96;
+    const maxMidpointSeparationM = Math.max(8, segmentLengthMeters * 2);
+    const maxMidpointSeparationSq = maxMidpointSeparationM * maxMidpointSeparationM;
     const cellSizeM = toleranceM;
     const sampleStepM = Math.max(0.75, Math.min(2, segmentLengthMeters * 0.5));
     const cells = new Map<string, number[]>();
@@ -227,6 +241,11 @@ export default function MapView({
         const routeSeparationM = Math.abs(i - j) * segmentLengthMeters;
         // Prevent contiguous route neighbors from chaining the entire course into one group.
         if (routeSeparationM < minRouteSeparationM) return;
+        const parallelCos = Math.abs(ux[i] * ux[j] + uy[i] * uy[j]);
+        if (parallelCos < minParallelCos) return;
+        const mdx = mx[i] - mx[j];
+        const mdy = my[i] - my[j];
+        if (mdx * mdx + mdy * mdy > maxMidpointSeparationSq) return;
         const distSq = segmentToSegmentDistSq(
           ax[i],
           ay[i],
