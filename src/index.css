@@ -58,10 +58,23 @@ select {
   list-style: none;
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .collapsible-panel summary::-webkit-details-marker {
   display: none;
+}
+
+.collapsible-panel summary::before {
+  content: '▸';
+  font-size: 0.9rem;
+  color: #334155;
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+}
+
+.collapsible-panel[open] summary::before {
+  transform: rotate(90deg);
 }
 
 .collapsible-panel summary h2 {
@@ -91,6 +104,11 @@ select {
 .row input,
 .row select {
   width: 100%;
+}
+
+.row input[type='checkbox'] {
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .waves-list {
