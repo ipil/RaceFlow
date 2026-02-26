@@ -186,15 +186,16 @@ export default function App() {
         <div className="panel">
           <h2>Race Flow Simulator</h2>
 
-          <h3>Quick Start (30 seconds)</h3>
+          <h3>Quick Start</h3>
           <ol>
             <li><strong>Choose a Map</strong> — select a sample course or upload a <code>.gpx</code> file.</li>
-            <li><strong>Add Starting Waves</strong> — define when runners start and their pace ranges.</li>
+            <li>
+              <strong>Add Starting Waves</strong> — define when runners start and their pace ranges.
+              (Default waves correspond to a race held on the sample courses.)
+            </li>
             <li><strong>Press Play</strong> — watch congestion evolve along the course.</li>
           </ol>
-          <p>Each dot represents a runner.<br />Dot color indicates <strong>local runner density</strong>.</p>
-
-          <hr />
+          <p>Each dot represents a runner.<br />Dot color indicates local runner density.</p>
 
           <h3>What This Tool Simulates</h3>
           <p>
@@ -203,13 +204,11 @@ export default function App() {
           </p>
           <p>Two complementary congestion views are available:</p>
           <ul>
-            <li><strong>Runner-centric density</strong> — crowding experienced by individual runners.</li>
-            <li><strong>Route-centric density</strong> — congestion patterns along the course itself.</li>
+            <li><strong>Runner-centric density (always enabled)</strong> — crowding experienced by individual runners.</li>
+            <li><strong>Route-centric density (selectively enabled)</strong> — congestion patterns along the course itself.</li>
           </ul>
 
-          <hr />
-
-          <h3>Core Concepts</h3>
+          <h3>Core Elements</h3>
           <h4>Runner Density</h4>
           <p>Runner density measures how crowded an area is.</p>
           <p>For a given runner:</p>
@@ -218,29 +217,23 @@ export default function App() {
             <li>nearby runners inside that radius are counted</li>
             <li>dot color represents the resulting number density</li>
           </ul>
-          <p>Higher density corresopnds to warmer colors.</p>
+          <p>Higher density → warmer colors.</p>
 
           <h4>Starting Waves</h4>
-          <p>Each starting wave specifies:</p>
+          <p>A starting wave specifies:</p>
           <ul>
             <li>start time</li>
             <li>number of runners</li>
             <li>fastest and slowest pace</li>
           </ul>
-          <p>Each runner&apos;s pace is randomly drawn from the wave&apos;s pace range.</p>
-
-          <hr />
+          <p>Each runner&apos;s pace is randomly drawn from the wave&apos;s pace range, producing realistic spreading and overtaking behavior.</p>
 
           <h3>Controls Reference</h3>
           <h4>Map Selection</h4>
           <p>Load an example course or upload a <code>.gpx</code> route.</p>
 
-          <hr />
-
           <h4>Simulation Speed</h4>
           <p>Controls how quickly simulated race time advances.<br />Default: <strong>20× real time</strong>.</p>
-
-          <hr />
 
           <h4>Runner Dot Coloring (Runner-Centric View)</h4>
           <ul>
@@ -254,8 +247,6 @@ export default function App() {
             </li>
           </ul>
           <p>Adjust these parameters to highlight different congestion scales.</p>
-
-          <hr />
 
           <h4>Route Congestion Stats (Route-Centric View)</h4>
           <p>Enable the heat map to analyze congestion along the course.</p>
@@ -276,17 +267,16 @@ export default function App() {
             Minimum density mapped to the maximum (red) segment color.
           </p>
 
-          <hr />
-
           <h3>Interpreting Results</h3>
           <p>
             Out-and-back sections naturally exhibit higher measured densities because runners occupy
             the same physical corridor in opposing directions. High density in these regions is not
-            necessarily problematic.
+            necessarily problematic. High density in regions where the path is relatively straight
+            and/or wide is also generally not too problematic.
           </p>
           <p>
-            The tool is most useful for identifying <em>undesirable congestion</em> — especially in
-            narrow, constrained, or highly curved portions of a course.
+            The tool is most useful for identifying undesirable congestion, such as congestion
+            occurring in narrow, constrained, or highly curved portions of a course.
           </p>
         </div>
 
