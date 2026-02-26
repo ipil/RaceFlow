@@ -27,6 +27,7 @@ export default function RunnerDotColoring({
           onChange={(e) => onDensityRadiusChange(Number(e.target.value))}
         />
       </div>
+      <div className="microcopy">How far each runner &quot;looks&quot; to count neighbors.</div>
       <div className="row">
         <label htmlFor="threshold-runner-density">
           Threshold runner density (runners/m): {thresholdRunnerDensity}
@@ -41,6 +42,7 @@ export default function RunnerDotColoring({
           onChange={(e) => onThresholdRunnerDensityChange(Number(e.target.value))}
         />
       </div>
+      <div className="microcopy">Density at which dots become fully red.</div>
     </CollapsiblePanel>
   );
 }

@@ -430,95 +430,103 @@ export default function App() {
           </p>
         </CollapsiblePanel>
 
-        <div className="row">
-          <button type="button" onClick={addCourse}>Add course</button>
-        </div>
+        <section className="control-group">
+          <h2>Simulation Setup</h2>
+          <p className="control-group-copy">Map and waves are configured per course. Speed is in Simulation Controls.</p>
+          <div className="row">
+            <button type="button" onClick={addCourse}>Add course</button>
+          </div>
 
-        {courses.map((course, index) => (
-          <CollapsiblePanel key={course.id} title={`Course ${index + 1}`} defaultOpen={index === 0}>
-            <div className="row">
-              <label htmlFor={`gpx-upload-${course.id}`}>Upload GPX</label>
-              <input
-                id={`gpx-upload-${course.id}`}
-                type="file"
-                accept=".gpx,application/gpx+xml"
-                onChange={onUploadFile(course.id)}
+          {courses.map((course, index) => (
+            <CollapsiblePanel key={course.id} title={`Course ${index + 1}`} defaultOpen={index === 0}>
+              <div className="row">
+                <label htmlFor={`gpx-upload-${course.id}`}>Upload GPX</label>
+                <input
+                  id={`gpx-upload-${course.id}`}
+                  type="file"
+                  accept=".gpx,application/gpx+xml"
+                  onChange={onUploadFile(course.id)}
+                />
+              </div>
+              <div className="row">
+                <label htmlFor={`default-map-select-${course.id}`}>Select an Example Map</label>
+                <select
+                  id={`default-map-select-${course.id}`}
+                  value={course.selectedDefaultMapUrl}
+                  onChange={(e) => setCourseField(course.id, 'selectedDefaultMapUrl', e.target.value)}
+                >
+                  {DEFAULT_MAP_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.url}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="row">
+                <button
+                  type="button"
+                  onClick={() => void onLoadDefaultRoute(course.id, course.selectedDefaultMapUrl)}
+                >
+                  Load selected default map
+                </button>
+                <button
+                  type="button"
+                  disabled={courses.length === 1}
+                  onClick={() => removeCourse(course.id)}
+                >
+                  Remove course
+                </button>
+              </div>
+              <div style={{ marginTop: 8, fontSize: '0.9rem' }}>
+                Route length: {course.routeData ? `${course.routeData.total.toFixed(0)} m` : 'No route loaded'}
+              </div>
+              {course.error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{course.error}</div>}
+
+              <WaveEditor
+                waves={course.waves}
+                setWaves={(waves) => setCourseField(course.id, 'waves', waves)}
+                collapsible={false}
               />
-            </div>
-            <div className="row">
-              <label htmlFor={`default-map-select-${course.id}`}>Select an Example Map</label>
-              <select
-                id={`default-map-select-${course.id}`}
-                value={course.selectedDefaultMapUrl}
-                onChange={(e) => setCourseField(course.id, 'selectedDefaultMapUrl', e.target.value)}
-              >
-                {DEFAULT_MAP_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.url}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="row">
-              <button
-                type="button"
-                onClick={() => void onLoadDefaultRoute(course.id, course.selectedDefaultMapUrl)}
-              >
-                Load selected default map
-              </button>
-              <button
-                type="button"
-                disabled={courses.length === 1}
-                onClick={() => removeCourse(course.id)}
-              >
-                Remove course
-              </button>
-            </div>
-            <div style={{ marginTop: 8, fontSize: '0.9rem' }}>
-              Route length: {course.routeData ? `${course.routeData.total.toFixed(0)} m` : 'No route loaded'}
-            </div>
-            {course.error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{course.error}</div>}
+            </CollapsiblePanel>
+          ))}
+        </section>
 
-            <WaveEditor
-              waves={course.waves}
-              setWaves={(waves) => setCourseField(course.id, 'waves', waves)}
-              collapsible={false}
-            />
-          </CollapsiblePanel>
-        ))}
+        <section className="control-group">
+          <h2>Visualization</h2>
+          <p className="control-group-copy">Tune how runner dots and route segments are color-mapped.</p>
+          <RunnerDotColoring
+            densityRadiusMeters={densityRadiusMeters}
+            thresholdRunnerDensity={thresholdRunnerDensity}
+            onDensityRadiusChange={(radius) => {
+              if (!Number.isFinite(radius)) return;
+              setDensityRadiusMeters(Math.max(2, Math.min(20, Math.round(radius))));
+            }}
+            onThresholdRunnerDensityChange={(value) => {
+              if (!Number.isFinite(value)) return;
+              setThresholdRunnerDensity(Math.max(0, Math.min(10, Math.round(value))));
+            }}
+          />
 
-        <RunnerDotColoring
-          densityRadiusMeters={densityRadiusMeters}
-          thresholdRunnerDensity={thresholdRunnerDensity}
-          onDensityRadiusChange={(radius) => {
-            if (!Number.isFinite(radius)) return;
-            setDensityRadiusMeters(Math.max(2, Math.min(20, Math.round(radius))));
-          }}
-          onThresholdRunnerDensityChange={(value) => {
-            if (!Number.isFinite(value)) return;
-            setThresholdRunnerDensity(Math.max(0, Math.min(10, Math.round(value))));
-          }}
-        />
-
-        <RouteCongestionStats
-          segmentLengthMeters={segmentLengthMeters}
-          heatMetric={heatMetric}
-          averageRedThreshold={averageRedThreshold}
-          maxRedThreshold={maxRedThreshold}
-          onSegmentLengthChange={(value) => {
-            if (!Number.isFinite(value)) return;
-            setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
-          }}
-          onHeatMetricChange={(value) => setHeatMetric(value)}
-          onAverageRedThresholdChange={(value) => {
-            if (!Number.isFinite(value)) return;
-            setAverageRedThreshold(Math.max(0, Math.min(10, value)));
-          }}
-          onMaxRedThresholdChange={(value) => {
-            if (!Number.isFinite(value)) return;
-            setMaxRedThreshold(Math.max(0, Math.min(10, value)));
-          }}
-        />
+          <RouteCongestionStats
+            segmentLengthMeters={segmentLengthMeters}
+            heatMetric={heatMetric}
+            averageRedThreshold={averageRedThreshold}
+            maxRedThreshold={maxRedThreshold}
+            onSegmentLengthChange={(value) => {
+              if (!Number.isFinite(value)) return;
+              setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
+            }}
+            onHeatMetricChange={(value) => setHeatMetric(value)}
+            onAverageRedThresholdChange={(value) => {
+              if (!Number.isFinite(value)) return;
+              setAverageRedThreshold(Math.max(0, Math.min(10, value)));
+            }}
+            onMaxRedThresholdChange={(value) => {
+              if (!Number.isFinite(value)) return;
+              setMaxRedThreshold(Math.max(0, Math.min(10, value)));
+            }}
+          />
+        </section>
 
         <CollapsiblePanel title="Status">
           <div>Courses: {courses.length}</div>

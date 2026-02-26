@@ -59,36 +59,42 @@ export default function RouteCongestionStats({
         </div>
       </div>
       {heatMetric === 'average' && (
-        <div className="row">
-          <label htmlFor="avg-red-threshold">
-            Threshold segment density (runners/m): {averageRedThreshold}
-          </label>
-          <input
-            id="avg-red-threshold"
-            type="range"
-            min={0}
-            max={10}
-            step={0.25}
-            value={averageRedThreshold}
-            onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
-          />
-        </div>
+        <>
+          <div className="row">
+            <label htmlFor="avg-red-threshold">
+              Threshold segment density (runners/m): {averageRedThreshold}
+            </label>
+            <input
+              id="avg-red-threshold"
+              type="range"
+              min={0}
+              max={10}
+              step={0.25}
+              value={averageRedThreshold}
+              onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
+            />
+          </div>
+          <div className="microcopy">Density at which segments become fully red.</div>
+        </>
       )}
       {heatMetric === 'max' && (
-        <div className="row">
-          <label htmlFor="max-red-threshold">
-            Threshold segment density (runners/m): {maxRedThreshold}
-          </label>
-          <input
-            id="max-red-threshold"
-            type="range"
-            min={0}
-            max={10}
-            step={0.25}
-            value={maxRedThreshold}
-            onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}
-          />
-        </div>
+        <>
+          <div className="row">
+            <label htmlFor="max-red-threshold">
+              Threshold segment density (runners/m): {maxRedThreshold}
+            </label>
+            <input
+              id="max-red-threshold"
+              type="range"
+              min={0}
+              max={10}
+              step={0.25}
+              value={maxRedThreshold}
+              onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}
+            />
+          </div>
+          <div className="microcopy">Density at which segments become fully red.</div>
+        </>
       )}
     </CollapsiblePanel>
   );

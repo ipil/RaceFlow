@@ -41,6 +41,24 @@ select {
   overflow-y: auto;
 }
 
+.control-group {
+  border: 1px solid #d4dbe3;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fbff;
+}
+
+.control-group h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.control-group-copy {
+  margin: 6px 0 10px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
 .panel {
   border: 1px solid #d4dbe3;
   border-radius: 10px;
@@ -113,6 +131,12 @@ select {
 .row input[type='checkbox'] {
   width: auto;
   flex: 0 0 auto;
+}
+
+.microcopy {
+  margin: -2px 0 8px;
+  font-size: 0.78rem;
+  color: #475569;
 }
 
 .waves-list {
