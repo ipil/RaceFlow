@@ -4,6 +4,8 @@ import CollapsiblePanel from './CollapsiblePanel';
 type WaveEditorProps = {
   waves: Wave[];
   setWaves: (waves: Wave[]) => void;
+  collapsible?: boolean;
+  title?: string;
 };
 
 function updateWaveField(
@@ -33,7 +35,12 @@ function minMileToSecPerKm(minutes: number, seconds: number): number {
   return secPerMile / KM_PER_MILE;
 }
 
-export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
+export default function WaveEditor({
+  waves,
+  setWaves,
+  collapsible = true,
+  title = 'Wave Editor',
+}: WaveEditorProps) {
   const addWave = () => {
     const nextId = `wave-${waves.length + 1}`;
     setWaves([
@@ -52,8 +59,8 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
     setWaves(waves.filter((w) => w.id !== waveId));
   };
 
-  return (
-    <CollapsiblePanel title="Wave Editor">
+  const body = (
+    <>
       <div className="waves-list">
         {waves.map((wave, index) => {
           const minPace = secPerKmToMinMile(wave.minPaceSecPerKm);
@@ -199,6 +206,12 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
           Add wave
         </button>
       </div>
-    </CollapsiblePanel>
+    </>
   );
+
+  if (!collapsible) {
+    return <div>{body}</div>;
+  }
+
+  return <CollapsiblePanel title={title}>{body}</CollapsiblePanel>;
 }

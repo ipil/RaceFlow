@@ -14,7 +14,7 @@ export default function RunnerDotColoring({
   onThresholdRunnerDensityChange,
 }: RunnerDotColoringProps) {
   return (
-    <CollapsiblePanel title="Runner-Centric Denstiy Parameters">
+    <CollapsiblePanel title="Runner-Centric Density Parameters">
       <div className="row">
         <label htmlFor="density-radius">Density radius (m)</label>
         <input

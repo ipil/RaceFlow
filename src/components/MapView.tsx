@@ -11,9 +11,14 @@ type RouteData = {
   total: number;
 };
 
-type MapViewProps = {
+type CourseMapData = {
+  id: string;
   routeData: RouteData | null;
   runners: Runner[];
+};
+
+type MapViewProps = {
+  courses: CourseMapData[];
   simTime: number;
   playing: boolean;
   densityRadiusMeters: number;
@@ -23,6 +28,33 @@ type MapViewProps = {
   showRouteHeatmap: boolean;
   averageRedThreshold: number;
   maxRedThreshold: number;
+  runId: number;
+};
+
+type SegmentEntry = {
+  courseIdx: number;
+  segIdx: number;
+  groupIdx: number;
+  p0: LatLng;
+  p1: LatLng;
+};
+
+type SegmentMeters = {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  midX: number;
+  midY: number;
+};
+
+type SegmentGroupRep = {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  midX: number;
+  midY: number;
 };
 
 function densityToColor(norm: number): string {
@@ -33,9 +65,25 @@ function densityToColor(norm: number): string {
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 
+function toMeters(point: LatLng, cosRefLat: number, earthRadiusM: number): { x: number; y: number } {
+  const latRad = (point.lat * Math.PI) / 180;
+  const lngRad = (point.lng * Math.PI) / 180;
+  return {
+    x: earthRadiusM * lngRad * cosRefLat,
+    y: earthRadiusM * latRad,
+  };
+}
+
+function segmentMatchDistance(a: SegmentMeters, b: SegmentGroupRep): number {
+  const fwd =
+    Math.hypot(a.x0 - b.x0, a.y0 - b.y0) + Math.hypot(a.x1 - b.x1, a.y1 - b.y1);
+  const rev =
+    Math.hypot(a.x0 - b.x1, a.y0 - b.y1) + Math.hypot(a.x1 - b.x0, a.y1 - b.y0);
+  return Math.min(fwd, rev) * 0.5;
+}
+
 export default function MapView({
-  routeData,
-  runners,
+  courses,
   simTime,
   playing,
   densityRadiusMeters,
@@ -45,11 +93,12 @@ export default function MapView({
   showRouteHeatmap,
   averageRedThreshold,
   maxRedThreshold,
+  runId,
 }: MapViewProps) {
   const mapRootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
-  const routeLayerRef = useRef<L.Polyline | null>(null);
+  const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const distancesRef = useRef<Float64Array>(new Float64Array(0));
   const latRef = useRef<Float64Array>(new Float64Array(0));
@@ -57,70 +106,133 @@ export default function MapView({
   const xMetersRef = useRef<Float64Array>(new Float64Array(0));
   const yMetersRef = useRef<Float64Array>(new Float64Array(0));
   const densityPerRunnerRef = useRef<Float32Array>(new Float32Array(0));
-  const segmentSumDensityRef = useRef<Float64Array>(new Float64Array(0));
-  const segmentSampleCountRef = useRef<Uint32Array>(new Uint32Array(0));
-  const segmentMaxDensityRef = useRef<Float32Array>(new Float32Array(0));
-  const segmentTmpCountRef = useRef<Uint16Array>(new Uint16Array(0));
-  const segmentSeenRef = useRef<Uint8Array>(new Uint8Array(0));
+
   const segmentNonZeroSumRef = useRef<Float64Array>(new Float64Array(0));
   const segmentNonZeroCountRef = useRef<Uint32Array>(new Uint32Array(0));
-  const groupValueRef = useRef<Float32Array>(new Float32Array(0));
-  const groupSeenRef = useRef<Uint8Array>(new Uint8Array(0));
+  const segmentMaxDensityRef = useRef<Float32Array>(new Float32Array(0));
+  const segmentSeenRef = useRef<Uint8Array>(new Uint8Array(0));
+  const segmentFrameCountRef = useRef<Uint32Array>(new Uint32Array(0));
+  const avgValueRef = useRef<Float32Array>(new Float32Array(0));
   const lastTrackedSimTimeRef = useRef(0);
-  const avgModeValueRef = useRef<Float32Array>(new Float32Array(0));
 
-  const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
-  const segmentBreakpoints = useMemo(() => {
-    if (!routeData || routeData.total <= 0) return [] as LatLng[];
-    const count = Math.max(1, Math.ceil(routeData.total / segmentLengthMeters));
-    const out = new Array<LatLng>(count + 1);
-    for (let i = 0; i <= count; i += 1) {
-      const d = Math.min(routeData.total, i * segmentLengthMeters);
-      out[i] = positionAtDistance(routeData.points, routeData.cumdist, d);
-    }
-    return out;
-  }, [routeData, segmentLengthMeters]);
+  const courseTmpCountsRef = useRef<Array<Uint16Array>>([]);
 
-  const segmentSpatialGroups = useMemo(() => {
-    if (!routeData || segmentCount <= 0 || segmentBreakpoints.length !== segmentCount + 1) {
-      return { segToGroup: new Uint32Array(0), groupCount: 0 };
-    }
-    const segToGroup = new Uint32Array(segmentCount);
-    const keyToGroup = new Map<string, number>();
-    let groupCount = 0;
-    const q = (v: number) => Math.round(v * 1e6);
+  const geometry = useMemo(() => {
+    const courseSegmentCounts = new Array<number>(courses.length).fill(0);
+    const entries: SegmentEntry[] = [];
+    const groupMembers: Array<Array<{ courseIdx: number; segIdx: number }>> = [];
+    const groupReps: SegmentGroupRep[] = [];
+    const bucketToGroups = new Map<string, number[]>();
 
-    for (let i = 0; i < segmentCount; i += 1) {
-      const a = segmentBreakpoints[i];
-      const b = segmentBreakpoints[i + 1];
-      const aKey = `${q(a.lat)},${q(a.lng)}`;
-      const bKey = `${q(b.lat)},${q(b.lng)}`;
-      const key = aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
-      const existing = keyToGroup.get(key);
-      if (existing !== undefined) {
-        segToGroup[i] = existing;
-      } else {
-        segToGroup[i] = groupCount;
-        keyToGroup.set(key, groupCount);
-        groupCount += 1;
+    const firstRoute = courses.find((c) => c.routeData && c.routeData.points.length > 0)?.routeData;
+    const refLatRad = firstRoute ? (firstRoute.points[0].lat * Math.PI) / 180 : 0;
+    const cosRefLat = Math.cos(refLatRad);
+    const earthRadiusM = 6371000;
+
+    const overlapToleranceMeters = Math.max(2, segmentLengthMeters * 0.6);
+    const bucketSize = Math.max(2, overlapToleranceMeters);
+    const bucketKey = (x: number, y: number) =>
+      `${Math.floor(x / bucketSize)},${Math.floor(y / bucketSize)}`;
+    const neighborOffsets = [-1, 0, 1];
+
+    for (let c = 0; c < courses.length; c += 1) {
+      const rd = courses[c].routeData;
+      if (!rd || rd.total <= 0 || rd.points.length < 2) continue;
+
+      const segCount = Math.max(1, Math.ceil(rd.total / segmentLengthMeters));
+      courseSegmentCounts[c] = segCount;
+
+      for (let i = 0; i < segCount; i += 1) {
+        const d0 = i * segmentLengthMeters;
+        const d1 = Math.min(rd.total, (i + 1) * segmentLengthMeters);
+        const p0 = positionAtDistance(rd.points, rd.cumdist, d0);
+        const p1 = positionAtDistance(rd.points, rd.cumdist, d1);
+
+        const m0 = toMeters(p0, cosRefLat, earthRadiusM);
+        const m1 = toMeters(p1, cosRefLat, earthRadiusM);
+        const segM: SegmentMeters = {
+          x0: m0.x,
+          y0: m0.y,
+          x1: m1.x,
+          y1: m1.y,
+          midX: 0.5 * (m0.x + m1.x),
+          midY: 0.5 * (m0.y + m1.y),
+        };
+
+        const bx = Math.floor(segM.midX / bucketSize);
+        const by = Math.floor(segM.midY / bucketSize);
+        let bestGroup = -1;
+        let bestDist = Number.POSITIVE_INFINITY;
+
+        for (let oy = 0; oy < neighborOffsets.length; oy += 1) {
+          for (let ox = 0; ox < neighborOffsets.length; ox += 1) {
+            const nx = bx + neighborOffsets[ox];
+            const ny = by + neighborOffsets[oy];
+            const groups = bucketToGroups.get(`${nx},${ny}`);
+            if (!groups) continue;
+            for (let gi = 0; gi < groups.length; gi += 1) {
+              const g = groups[gi];
+              const rep = groupReps[g];
+              const d = segmentMatchDistance(segM, rep);
+              if (d <= overlapToleranceMeters && d < bestDist) {
+                bestDist = d;
+                bestGroup = g;
+              }
+            }
+          }
+        }
+
+        let groupIdx = bestGroup;
+        if (groupIdx < 0) {
+          groupIdx = groupMembers.length;
+          groupMembers.push([]);
+          groupReps.push({
+            x0: segM.x0,
+            y0: segM.y0,
+            x1: segM.x1,
+            y1: segM.y1,
+            midX: segM.midX,
+            midY: segM.midY,
+          });
+          const key = bucketKey(segM.midX, segM.midY);
+          const existing = bucketToGroups.get(key);
+          if (existing) {
+            existing.push(groupIdx);
+          } else {
+            bucketToGroups.set(key, [groupIdx]);
+          }
+        }
+
+        groupMembers[groupIdx].push({ courseIdx: c, segIdx: i });
+        entries.push({ courseIdx: c, segIdx: i, groupIdx, p0, p1 });
       }
     }
 
-    return { segToGroup, groupCount };
-  }, [routeData, segmentCount, segmentBreakpoints, segmentLengthMeters]);
+    return {
+      courseSegmentCounts,
+      entries,
+      groupMembers,
+      groupCount: groupMembers.length,
+    };
+  }, [courses, segmentLengthMeters]);
 
   useEffect(() => {
-    if (!routeData || segmentCount <= 0) return;
-    segmentSumDensityRef.current = new Float64Array(segmentCount);
-    segmentSampleCountRef.current = new Uint32Array(segmentCount);
-    segmentMaxDensityRef.current = new Float32Array(segmentCount);
-    segmentTmpCountRef.current = new Uint16Array(segmentCount);
-    segmentSeenRef.current = new Uint8Array(segmentCount);
-    segmentNonZeroSumRef.current = new Float64Array(segmentCount);
-    segmentNonZeroCountRef.current = new Uint32Array(segmentCount);
-    avgModeValueRef.current = new Float32Array(segmentCount);
+    const groupCount = geometry.groupCount;
+    segmentNonZeroSumRef.current = new Float64Array(groupCount);
+    segmentNonZeroCountRef.current = new Uint32Array(groupCount);
+    segmentMaxDensityRef.current = new Float32Array(groupCount);
+    segmentSeenRef.current = new Uint8Array(groupCount);
+    segmentFrameCountRef.current = new Uint32Array(groupCount);
+    avgValueRef.current = new Float32Array(groupCount);
     lastTrackedSimTimeRef.current = 0;
-  }, [routeData, segmentLengthMeters, runners, segmentCount]);
+
+    const courseTmpCounts: Array<Uint16Array> = new Array(courses.length);
+    for (let i = 0; i < courses.length; i += 1) {
+      const segCount = geometry.courseSegmentCounts[i] ?? 0;
+      courseTmpCounts[i] = new Uint16Array(segCount);
+    }
+    courseTmpCountsRef.current = courseTmpCounts;
+  }, [geometry.groupCount, geometry.courseSegmentCounts, courses.length, runId]);
 
   useEffect(() => {
     if (!mapRootRef.current || mapRef.current) return;
@@ -146,19 +258,30 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !routeData || routeData.points.length < 2) return;
+    if (!map) return;
 
-    routeLayerRef.current?.remove();
+    routeLayerGroupRef.current?.remove();
+    const group = L.layerGroup().addTo(map);
+    routeLayerGroupRef.current = group;
 
-    const latLngs = routeData.points.map((p) => [p.lat, p.lng]) as [number, number][];
-    routeLayerRef.current = L.polyline(latLngs, {
-      color: '#6b7280',
-      weight: 4,
-      opacity: 0.9,
-    }).addTo(map);
+    const allLatLngs: [number, number][] = [];
 
-    map.fitBounds(latLngs as LatLngBoundsExpression, { padding: [20, 20] });
-  }, [routeData]);
+    for (let c = 0; c < courses.length; c += 1) {
+      const rd = courses[c].routeData;
+      if (!rd || rd.points.length < 2) continue;
+      const latLngs = rd.points.map((p) => [p.lat, p.lng]) as [number, number][];
+      allLatLngs.push(...latLngs);
+      L.polyline(latLngs, {
+        color: '#6b7280',
+        weight: 4,
+        opacity: 0.9,
+      }).addTo(group);
+    }
+
+    if (allLatLngs.length >= 2) {
+      map.fitBounds(allLatLngs as LatLngBoundsExpression, { padding: [20, 20] });
+    }
+  }, [courses]);
 
   const draw = useMemo(() => {
     return () => {
@@ -177,19 +300,16 @@ export default function MapView({
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (!routeData || routeData.points.length < 2 || runners.length === 0 || routeData.total <= 0) {
-        return;
-      }
+      const totalRunners = courses.reduce((sum, c) => sum + c.runners.length, 0);
+      if (totalRunners <= 0) return;
 
-      const runnerCount = runners.length;
-
-      if (distancesRef.current.length < runnerCount) {
-        distancesRef.current = new Float64Array(runnerCount);
-        latRef.current = new Float64Array(runnerCount);
-        lngRef.current = new Float64Array(runnerCount);
-        xMetersRef.current = new Float64Array(runnerCount);
-        yMetersRef.current = new Float64Array(runnerCount);
-        densityPerRunnerRef.current = new Float32Array(runnerCount);
+      if (distancesRef.current.length < totalRunners) {
+        distancesRef.current = new Float64Array(totalRunners);
+        latRef.current = new Float64Array(totalRunners);
+        lngRef.current = new Float64Array(totalRunners);
+        xMetersRef.current = new Float64Array(totalRunners);
+        yMetersRef.current = new Float64Array(totalRunners);
+        densityPerRunnerRef.current = new Float32Array(totalRunners);
       }
 
       const distances = distancesRef.current;
@@ -198,37 +318,56 @@ export default function MapView({
       const xs = xMetersRef.current;
       const ys = yMetersRef.current;
       const densityPerRunner = densityPerRunnerRef.current;
+
       const radiusSq = densityRadiusMeters * densityRadiusMeters;
       const invDensityRadius = 1 / Math.max(1e-6, densityRadiusMeters);
-      const earthRadiusM = 6371000;
-      const refLatRad = (routeData.points[0].lat * Math.PI) / 180;
-      const cosRefLat = Math.cos(refLatRad);
-      const segmentTmpCount = segmentTmpCountRef.current;
-      const segmentSumDensity = segmentSumDensityRef.current;
-      const segmentSampleCount = segmentSampleCountRef.current;
-      const segmentMaxDensity = segmentMaxDensityRef.current;
-      const segmentSeen = segmentSeenRef.current;
-      const segmentNonZeroSum = segmentNonZeroSumRef.current;
-      const segmentNonZeroCount = segmentNonZeroCountRef.current;
-      const avgModeValue = avgModeValueRef.current;
 
-      for (let i = 0; i < runnerCount; i += 1) {
-        const d = runnerDistanceMeters(runners[i], simTime, routeData.total);
-        distances[i] = d;
-        const pos = positionAtDistance(routeData.points, routeData.cumdist, d);
-        lats[i] = pos.lat;
-        lngs[i] = pos.lng;
-        const latRad = (pos.lat * Math.PI) / 180;
-        const lngRad = (pos.lng * Math.PI) / 180;
-        xs[i] = earthRadiusM * lngRad * cosRefLat;
-        ys[i] = earthRadiusM * latRad;
-        densityPerRunner[i] = 1;
+      const earthRadiusM = 6371000;
+      const firstRoute = courses.find((c) => c.routeData && c.routeData.points.length > 0)?.routeData;
+      const refLatRad = firstRoute ? (firstRoute.points[0].lat * Math.PI) / 180 : 0;
+      const cosRefLat = Math.cos(refLatRad);
+
+      const courseTmpCounts = courseTmpCountsRef.current;
+      for (let c = 0; c < courseTmpCounts.length; c += 1) {
+        courseTmpCounts[c].fill(0);
       }
 
-      for (let i = 0; i < runnerCount; i += 1) {
+      let writeIdx = 0;
+      for (let c = 0; c < courses.length; c += 1) {
+        const course = courses[c];
+        const rd = course.routeData;
+        if (!rd || rd.total <= 0 || rd.points.length < 2) continue;
+
+        const segCount = geometry.courseSegmentCounts[c] ?? 0;
+
+        for (let i = 0; i < course.runners.length; i += 1) {
+          const runner = course.runners[i];
+          const d = runnerDistanceMeters(runner, simTime, rd.total);
+          distances[writeIdx] = d;
+          const pos = positionAtDistance(rd.points, rd.cumdist, d);
+          lats[writeIdx] = pos.lat;
+          lngs[writeIdx] = pos.lng;
+
+          const latRad = (pos.lat * Math.PI) / 180;
+          const lngRad = (pos.lng * Math.PI) / 180;
+          xs[writeIdx] = earthRadiusM * lngRad * cosRefLat;
+          ys[writeIdx] = earthRadiusM * latRad;
+          densityPerRunner[writeIdx] = 1;
+
+          if (segCount > 0) {
+            const segIdx = Math.min(segCount - 1, Math.max(0, Math.floor(d / segmentLengthMeters)));
+            courseTmpCounts[c][segIdx] += 1;
+          }
+
+          writeIdx += 1;
+        }
+      }
+      const activeRunnerCount = writeIdx;
+
+      for (let i = 0; i < activeRunnerCount; i += 1) {
         const xi = xs[i];
         const yi = ys[i];
-        for (let j = i + 1; j < runnerCount; j += 1) {
+        for (let j = i + 1; j < activeRunnerCount; j += 1) {
           const dx = xi - xs[j];
           const dy = yi - ys[j];
           if (dx * dx + dy * dy <= radiusSq) {
@@ -239,103 +378,70 @@ export default function MapView({
         densityPerRunner[i] *= invDensityRadius;
       }
 
+      const nonZeroSum = segmentNonZeroSumRef.current;
+      const nonZeroCount = segmentNonZeroCountRef.current;
+      const maxDensity = segmentMaxDensityRef.current;
+      const seen = segmentSeenRef.current;
+      const frameCount = segmentFrameCountRef.current;
+      const avgValues = avgValueRef.current;
+
       if (simTime < lastTrackedSimTimeRef.current) {
-        segmentSumDensity.fill(0);
-        segmentSampleCount.fill(0);
-        segmentMaxDensity.fill(0);
-        segmentSeen.fill(0);
-        segmentNonZeroSum.fill(0);
-        segmentNonZeroCount.fill(0);
+        nonZeroSum.fill(0);
+        nonZeroCount.fill(0);
+        maxDensity.fill(0);
+        seen.fill(0);
+        frameCount.fill(0);
       }
-      if (playing && segmentCount > 0) {
-        segmentTmpCount.fill(0);
 
-        for (let i = 0; i < runnerCount; i += 1) {
-          const segIdx = Math.min(
-            segmentCount - 1,
-            Math.max(0, Math.floor(distances[i] / segmentLengthMeters)),
-          );
-          segmentTmpCount[segIdx] += 1;
-        }
-
-        for (let i = 0; i < segmentCount; i += 1) {
-          const frameDensity = segmentTmpCount[i] / segmentLengthMeters;
-          if (frameDensity > 0) {
-            segmentSeen[i] = 1;
-            segmentNonZeroSum[i] += frameDensity;
-            segmentNonZeroCount[i] += 1;
+      if (playing && geometry.groupCount > 0) {
+        for (let g = 0; g < geometry.groupCount; g += 1) {
+          const members = geometry.groupMembers[g];
+          let countSum = 0;
+          for (let m = 0; m < members.length; m += 1) {
+            const member = members[m];
+            countSum += courseTmpCounts[member.courseIdx][member.segIdx] || 0;
           }
-          if (segmentSeen[i] === 0) {
-            continue;
+          const density = countSum / segmentLengthMeters;
+          frameCount[g] += 1;
+          if (density > 0) {
+            seen[g] = 1;
+            nonZeroSum[g] += density;
+            nonZeroCount[g] += 1;
           }
-
-          segmentSumDensity[i] += frameDensity;
-          segmentSampleCount[i] += 1;
-          if (frameDensity > segmentMaxDensity[i]) {
-            segmentMaxDensity[i] = frameDensity;
+          if (density > maxDensity[g]) {
+            maxDensity[g] = density;
           }
         }
       }
+
       lastTrackedSimTimeRef.current = simTime;
 
-      if (avgModeValue.length === segmentCount) {
-        for (let i = 0; i < segmentCount; i += 1) {
-          if (segmentSeen[i] === 0) {
-            avgModeValue[i] = 0;
-            continue;
-          }
-          avgModeValue[i] =
-            segmentNonZeroCount[i] > 0 ? segmentNonZeroSum[i] / segmentNonZeroCount[i] : 0;
-        }
+      for (let g = 0; g < geometry.groupCount; g += 1) {
+        avgValues[g] = nonZeroCount[g] > 0 ? nonZeroSum[g] / nonZeroCount[g] : 0;
       }
 
-      if (showRouteHeatmap && segmentCount > 0 && segmentBreakpoints.length === segmentCount + 1) {
-        const activeRedThreshold =
-          heatMetric === 'average' ? averageRedThreshold : maxRedThreshold;
-        const denom = Math.max(1e-6, activeRedThreshold);
-        const { segToGroup, groupCount } = segmentSpatialGroups;
-        if (groupValueRef.current.length !== groupCount) {
-          groupValueRef.current = new Float32Array(groupCount);
-        }
-        if (groupSeenRef.current.length !== groupCount) {
-          groupSeenRef.current = new Uint8Array(groupCount);
-        }
-        const groupValues = groupValueRef.current;
-        const groupSeen = groupSeenRef.current;
-        groupValues.fill(0);
-        groupSeen.fill(0);
+      if (showRouteHeatmap && geometry.entries.length > 0) {
+        const activeThreshold = heatMetric === 'average' ? averageRedThreshold : maxRedThreshold;
+        const denom = Math.max(1e-6, activeThreshold);
 
-        for (let i = 0; i < segmentCount; i += 1) {
-          const hasSeenRunner = segmentSeen[i] === 1;
-          if (!hasSeenRunner) continue;
-          const value = heatMetric === 'average' ? avgModeValue[i] : segmentMaxDensity[i];
-          const g = segToGroup[i];
-          groupSeen[g] = 1;
-          if (value > groupValues[g]) {
-            groupValues[g] = value;
-          }
-        }
+        const drawOrder = [...geometry.entries];
+        drawOrder.sort((a, b) => {
+          const va = heatMetric === 'average' ? avgValues[a.groupIdx] : maxDensity[a.groupIdx];
+          const vb = heatMetric === 'average' ? avgValues[b.groupIdx] : maxDensity[b.groupIdx];
+          return va - vb;
+        });
 
         ctx.globalAlpha = 1;
         ctx.lineCap = 'round';
-        const drawOrder: number[] = [];
-        for (let i = 0; i < segmentCount; i += 1) {
-          const groupIdx = segToGroup[i];
-          const hasSeenRunner = segmentSeen[i] === 1;
-          if (!hasSeenRunner || groupSeen[groupIdx] === 0) continue;
-          drawOrder.push(i);
-        }
-        drawOrder.sort((a, b) => groupValues[segToGroup[a]] - groupValues[segToGroup[b]]);
+        for (let i = 0; i < drawOrder.length; i += 1) {
+          const seg = drawOrder[i];
+          if (seen[seg.groupIdx] === 0) continue;
 
-        for (let k = 0; k < drawOrder.length; k += 1) {
-          const i = drawOrder[k];
-          const p0 = segmentBreakpoints[i];
-          const p1 = segmentBreakpoints[i + 1];
-          const pt0 = map.latLngToContainerPoint([p0.lat, p0.lng]);
-          const pt1 = map.latLngToContainerPoint([p1.lat, p1.lng]);
-          const groupIdx = segToGroup[i];
-          const value = groupValues[groupIdx];
+          const value = heatMetric === 'average' ? avgValues[seg.groupIdx] : maxDensity[seg.groupIdx];
           const norm = value / denom;
+
+          const pt0 = map.latLngToContainerPoint([seg.p0.lat, seg.p0.lng]);
+          const pt1 = map.latLngToContainerPoint([seg.p1.lat, seg.p1.lng]);
           ctx.beginPath();
           ctx.moveTo(pt0.x, pt0.y);
           ctx.lineTo(pt1.x, pt1.y);
@@ -346,13 +452,13 @@ export default function MapView({
       }
 
       ctx.globalAlpha = 0.92;
-      for (let i = 0; i < runnerCount; i += 1) {
-        const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
-        const lowDensity = invDensityRadius;
-        const highDensity = thresholdRunnerDensity;
-        const denom = Math.max(1e-6, highDensity - lowDensity);
-        const norm = (densityPerRunner[i] - lowDensity) / denom;
+      const lowDensity = invDensityRadius;
+      const highDensity = thresholdRunnerDensity;
+      const dotDenom = Math.max(1e-6, highDensity - lowDensity);
 
+      for (let i = 0; i < activeRunnerCount; i += 1) {
+        const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
+        const norm = (densityPerRunner[i] - lowDensity) / dotDenom;
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 2.7, 0, Math.PI * 2);
         ctx.fillStyle = densityToColor(norm);
@@ -361,16 +467,13 @@ export default function MapView({
       ctx.globalAlpha = 1;
     };
   }, [
-    routeData,
-    runners,
+    courses,
     simTime,
     playing,
     densityRadiusMeters,
     thresholdRunnerDensity,
     segmentLengthMeters,
-    segmentCount,
-    segmentBreakpoints,
-    segmentSpatialGroups,
+    geometry,
     heatMetric,
     showRouteHeatmap,
     averageRedThreshold,

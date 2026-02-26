@@ -19,6 +19,15 @@ type RouteData = {
   total: number;
 };
 
+type CourseState = {
+  id: string;
+  selectedDefaultMapUrl: string;
+  routeData: RouteData | null;
+  waves: Wave[];
+  runners: Runner[];
+  error: string | null;
+};
+
 const KM_PER_MILE = 1.609344;
 
 function paceFromMinMile(minutes: number, seconds: number): number {
@@ -54,17 +63,28 @@ const DEFAULT_MAP_OPTIONS = [
   { id: 'south-first', label: 'Heart to Start 5K - south first', url: '/default-south-first.gpx' },
 ] as const;
 
+function cloneDefaultWaves(): Wave[] {
+  return DEFAULT_WAVES.map((w) => ({ ...w }));
+}
+
+function createCourse(courseNum: number): CourseState {
+  return {
+    id: `course-${courseNum}`,
+    selectedDefaultMapUrl: DEFAULT_MAP_OPTIONS[0].url,
+    routeData: null,
+    waves: cloneDefaultWaves(),
+    runners: [],
+    error: null,
+  };
+}
+
 export default function App() {
-  const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [waves, setWaves] = useState<Wave[]>(DEFAULT_WAVES);
-  const [runners, setRunners] = useState<Runner[]>([]);
+  const nextCourseNumRef = useRef(2);
+  const [courses, setCourses] = useState<CourseState[]>([createCourse(1)]);
 
   const [simTime, setSimTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(20);
-  const [selectedDefaultMapUrl, setSelectedDefaultMapUrl] = useState<string>(
-    DEFAULT_MAP_OPTIONS[0].url,
-  );
   const [densityRadiusMeters, setDensityRadiusMeters] = useState(15);
   const [thresholdRunnerDensity, setThresholdRunnerDensity] = useState(2);
   const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
@@ -72,24 +92,24 @@ export default function App() {
   const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
   const [averageRedThreshold, setAverageRedThreshold] = useState(1.5);
   const [maxRedThreshold, setMaxRedThreshold] = useState(1.5);
-  const [error, setError] = useState<string | null>(null);
+  const [runId, setRunId] = useState(0);
 
   const rafRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
 
   const maxTime = useMemo(() => {
-    if (!routeData || routeData.total <= 0) return 3600;
-    if (runners.length === 0) return 3600;
-
     let maxFinish = 0;
-    for (let i = 0; i < runners.length; i += 1) {
-      const r = runners[i];
-      const finish = r.startTimeSeconds + (routeData.total / 1000) * r.paceSecPerKm;
-      if (finish > maxFinish) maxFinish = finish;
+    for (let c = 0; c < courses.length; c += 1) {
+      const course = courses[c];
+      if (!course.routeData || course.routeData.total <= 0) continue;
+      for (let i = 0; i < course.runners.length; i += 1) {
+        const r = course.runners[i];
+        const finish = r.startTimeSeconds + (course.routeData.total / 1000) * r.paceSecPerKm;
+        if (finish > maxFinish) maxFinish = finish;
+      }
     }
-
-    return Math.max(1, Math.ceil(maxFinish));
-  }, [routeData, runners]);
+    return Math.max(3600, Math.ceil(maxFinish));
+  }, [courses]);
 
   useEffect(() => {
     if (!playing) {
@@ -130,41 +150,73 @@ export default function App() {
     };
   }, [playing, speed, maxTime]);
 
-  const loadGpxText = (gpxText: string) => {
+  const setCourseField = <K extends keyof CourseState>(
+    courseId: string,
+    key: K,
+    value: CourseState[K],
+  ) => {
+    setCourses((prev) =>
+      prev.map((course) => (course.id === courseId ? { ...course, [key]: value } : course)),
+    );
+  };
+
+  const loadGpxTextForCourse = (courseId: string, gpxText: string) => {
     try {
       const points = parseGpxToLatLngs(gpxText);
       const built = buildCumulativeDistances(points);
-      setRouteData(built);
-      setError(null);
+      setCourses((prev) =>
+        prev.map((course) =>
+          course.id === courseId
+            ? { ...course, routeData: built, error: null, runners: [] }
+            : course,
+        ),
+      );
       setPlaying(false);
       setSimTime(0);
+      setRunId((v) => v + 1);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to parse GPX file.';
-      setError(message);
+      setCourseField(courseId, 'error', message);
     }
   };
 
-  const onUploadFile: ChangeEventHandler<HTMLInputElement> = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    loadGpxText(text);
-    e.currentTarget.value = '';
-  };
+  const onUploadFile =
+    (courseId: string): ChangeEventHandler<HTMLInputElement> =>
+    async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      loadGpxTextForCourse(courseId, text);
+      e.currentTarget.value = '';
+    };
 
-  const onLoadDefaultRoute = async (url: string) => {
+  const onLoadDefaultRoute = async (courseId: string, url: string) => {
     try {
       const resp = await fetch(url);
       const text = await resp.text();
-      loadGpxText(text);
+      loadGpxTextForCourse(courseId, text);
     } catch {
-      setError('Could not load default GPX route.');
+      setCourseField(courseId, 'error', 'Could not load default GPX route.');
     }
   };
 
   useEffect(() => {
-    void onLoadDefaultRoute(selectedDefaultMapUrl);
+    if (courses.length === 0) return;
+    void onLoadDefaultRoute(courses[0].id, courses[0].selectedDefaultMapUrl);
   }, []);
+
+  const addCourse = () => {
+    const n = nextCourseNumRef.current;
+    nextCourseNumRef.current += 1;
+    setCourses((prev) => [...prev, createCourse(n)]);
+  };
+
+  const removeCourse = (courseId: string) => {
+    setCourses((prev) => prev.filter((c) => c.id !== courseId));
+    setPlaying(false);
+    setSimTime(0);
+    setRunId((v) => v + 1);
+  };
 
   const onPlayPause = () => {
     if (playing) {
@@ -173,11 +225,27 @@ export default function App() {
     }
 
     if (simTime === 0) {
-      const generated = generateRunners(waves);
-      setRunners(generated);
+      setCourses((prev) =>
+        prev.map((course) => {
+          if (!course.routeData || course.routeData.total <= 0) {
+            return { ...course, runners: [] };
+          }
+          const generated = generateRunners(course.waves).map((r) => ({
+            ...r,
+            id: `${course.id}-${r.id}`,
+          }));
+          return { ...course, runners: generated };
+        }),
+      );
+      setRunId((v) => v + 1);
     }
     setPlaying(true);
   };
+
+  const totalRunners = useMemo(
+    () => courses.reduce((sum, c) => sum + c.runners.length, 0),
+    [courses],
+  );
 
   return (
     <div className="app">
@@ -198,7 +266,7 @@ export default function App() {
 
           <h3>What This Tool Simulates</h3>
           <p>
-            The simulator models runners progressing along a race course over time.
+            The simulator models runners progressing along one or more race courses over time.
             Each runner is assigned a pace randomly sampled from the pace range of its starting wave.
           </p>
           <p>Two complementary congestion views are available:</p>
@@ -206,108 +274,64 @@ export default function App() {
             <li><strong>Runner-centric density (always enabled)</strong> — crowding experienced by individual runners.</li>
             <li><strong>Route-centric density (selectively enabled)</strong> — congestion patterns along the course itself.</li>
           </ul>
-
-          <h3>Core Elements</h3>
-          <h4>Runner Density</h4>
-          <p>Runner density measures how crowded an area is.</p>
-          <p>For a given runner:</p>
-          <ul>
-            <li>a circular neighborhood is defined using a selectable <strong>density radius</strong></li>
-            <li>nearby runners inside that radius are counted</li>
-            <li>dot color represents the resulting number density</li>
-          </ul>
-          <p>Higher density → warmer colors.</p>
-
-          <h4>Starting Waves</h4>
-          <p>A starting wave specifies:</p>
-          <ul>
-            <li>start time</li>
-            <li>number of runners</li>
-            <li>fastest and slowest pace</li>
-          </ul>
-          <p>Each runner&apos;s pace is randomly drawn from the wave&apos;s pace range, producing realistic spreading and overtaking behavior.</p>
-
-          <h3>Controls Reference</h3>
-          <h4>Map Selection</h4>
-          <p>Load an example course or upload a <code>.gpx</code> route.</p>
-
-          <h4>Simulation Speed</h4>
-          <p>Controls how quickly simulated race time advances.<br />Default: <strong>20× real time</strong>.</p>
-
-          <h4>Runner Dot Coloring (Runner-Centric View)</h4>
-          <ul>
-            <li>
-              <strong>Density radius (m)</strong><br />
-              Radius used to count neighboring runners.
-            </li>
-            <li>
-              <strong>Threshold runner density</strong><br />
-              Minimum density mapped to the maximum (red) color.
-            </li>
-          </ul>
-          <p>Adjust these parameters to highlight different congestion scales.</p>
-
-          <h4>Route Congestion Stats (Route-Centric View)</h4>
-          <p>Enable the heat map to analyze congestion along the course.</p>
-          <p>The route is divided into segments of configurable length.</p>
-          <p><strong>Visualization modes</strong></p>
-          <ul>
-            <li>
-              <strong>Average Density</strong><br />
-              Mean runner density across all frames in which runners occupy a segment.
-            </li>
-            <li>
-              <strong>Maximum Density</strong><br />
-              Highest density observed in a segment up to the current simulation time.
-            </li>
-          </ul>
-          <p>
-            <strong>Threshold segment density</strong><br />
-            Minimum density mapped to the maximum (red) segment color.
-          </p>
-
-          <h3>Interpreting Results</h3>
-          <p>
-            Out-and-back sections naturally exhibit higher measured densities because runners occupy
-            the same physical corridor in opposing directions. High density in these regions is not
-            necessarily problematic. High density in regions where the path is relatively straight
-            and/or wide is also generally not too problematic.
-          </p>
-          <p>
-            The tool is most useful for identifying undesirable congestion, such as congestion
-            occurring in narrow, constrained, or highly curved portions of a course.
-          </p>
         </CollapsiblePanel>
 
-        <CollapsiblePanel title="Route">
-          <div className="row">
-            <label htmlFor="gpx-upload">Upload GPX</label>
-            <input id="gpx-upload" type="file" accept=".gpx,application/gpx+xml" onChange={onUploadFile} />
-          </div>
-          <div className="row">
-            <label htmlFor="default-map-select">Select an Example Map</label>
-            <select
-              id="default-map-select"
-              value={selectedDefaultMapUrl}
-              onChange={(e) => setSelectedDefaultMapUrl(e.target.value)}
-            >
-              {DEFAULT_MAP_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.url}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="button" onClick={() => void onLoadDefaultRoute(selectedDefaultMapUrl)}>
-            Load selected default map
-          </button>
-          <div style={{ marginTop: 8, fontSize: '0.9rem' }}>
-            Route length: {routeData ? `${routeData.total.toFixed(0)} m` : 'No route loaded'}
-          </div>
-          {error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{error}</div>}
-        </CollapsiblePanel>
+        <div className="row">
+          <button type="button" onClick={addCourse}>Add course</button>
+        </div>
 
-        <WaveEditor waves={waves} setWaves={setWaves} />
+        {courses.map((course, index) => (
+          <CollapsiblePanel key={course.id} title={`Course ${index + 1}`} defaultOpen={index === 0}>
+            <div className="row">
+              <label htmlFor={`gpx-upload-${course.id}`}>Upload GPX</label>
+              <input
+                id={`gpx-upload-${course.id}`}
+                type="file"
+                accept=".gpx,application/gpx+xml"
+                onChange={onUploadFile(course.id)}
+              />
+            </div>
+            <div className="row">
+              <label htmlFor={`default-map-select-${course.id}`}>Select an Example Map</label>
+              <select
+                id={`default-map-select-${course.id}`}
+                value={course.selectedDefaultMapUrl}
+                onChange={(e) => setCourseField(course.id, 'selectedDefaultMapUrl', e.target.value)}
+              >
+                {DEFAULT_MAP_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.url}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row">
+              <button
+                type="button"
+                onClick={() => void onLoadDefaultRoute(course.id, course.selectedDefaultMapUrl)}
+              >
+                Load selected default map
+              </button>
+              <button
+                type="button"
+                disabled={courses.length === 1}
+                onClick={() => removeCourse(course.id)}
+              >
+                Remove course
+              </button>
+            </div>
+            <div style={{ marginTop: 8, fontSize: '0.9rem' }}>
+              Route length: {course.routeData ? `${course.routeData.total.toFixed(0)} m` : 'No route loaded'}
+            </div>
+            {course.error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{course.error}</div>}
+
+            <WaveEditor
+              waves={course.waves}
+              setWaves={(waves) => setCourseField(course.id, 'waves', waves)}
+              collapsible={false}
+            />
+          </CollapsiblePanel>
+        ))}
 
         <RunnerDotColoring
           densityRadiusMeters={densityRadiusMeters}
@@ -343,15 +367,14 @@ export default function App() {
         />
 
         <CollapsiblePanel title="Status">
-          <div>Waves: {waves.length}</div>
-          <div>Runners: {runners.length}</div>
+          <div>Courses: {courses.length}</div>
+          <div>Total runners: {totalRunners}</div>
         </CollapsiblePanel>
       </aside>
 
       <div className="map-pane">
         <MapView
-          routeData={routeData}
-          runners={runners}
+          courses={courses.map((c) => ({ id: c.id, routeData: c.routeData, runners: c.runners }))}
           simTime={simTime}
           playing={playing}
           densityRadiusMeters={densityRadiusMeters}
@@ -361,6 +384,7 @@ export default function App() {
           showRouteHeatmap={showRouteHeatmap}
           averageRedThreshold={averageRedThreshold}
           maxRedThreshold={maxRedThreshold}
+          runId={runId}
         />
         <div className="floating-controls">
           <Controls
