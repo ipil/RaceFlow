@@ -467,6 +467,40 @@ export default function MapView({
         }
       }
 
+      let seenCount = 0;
+      let framePositiveCount = 0;
+      let maxFrameDensityVal = 0;
+      let maxAvgVal = 0;
+      let maxHistVal = 0;
+      for (let g = 0; g < geometry.groupCount; g += 1) {
+        if (seen[g] === 1) seenCount += 1;
+        if (frameDensity[g] > 0) framePositiveCount += 1;
+        if (frameDensity[g] > maxFrameDensityVal) maxFrameDensityVal = frameDensity[g];
+        if (avgValues[g] > maxAvgVal) maxAvgVal = avgValues[g];
+        if (maxDensity[g] > maxHistVal) maxHistVal = maxDensity[g];
+      }
+
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(10, 10, 350, 128);
+      ctx.strokeStyle = 'rgba(15,23,42,0.35)';
+      ctx.strokeRect(10, 10, 350, 128);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '12px Menlo, Consolas, monospace';
+      const debugLines = [
+        `debug: showHeatmap=${showRouteHeatmap} metric=${heatMetric}`,
+        `courses=${courses.length} runners=${activeRunnerCount}`,
+        `segments entries=${geometry.entries.length} groups=${geometry.groupCount}`,
+        `seenGroups=${seenCount} framePositiveGroups=${framePositiveCount}`,
+        `max frame dens=${maxFrameDensityVal.toFixed(3)} runners/m`,
+        `max avg dens=${maxAvgVal.toFixed(3)} max hist dens=${maxHistVal.toFixed(3)}`,
+      ];
+      for (let i = 0; i < debugLines.length; i += 1) {
+        ctx.fillText(debugLines[i], 18, 28 + i * 18);
+      }
+      ctx.restore();
+
       ctx.globalAlpha = 0.92;
       const lowDensity = invDensityRadius;
       const highDensity = thresholdRunnerDensity;
