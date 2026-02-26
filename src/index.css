@@ -131,7 +131,7 @@ select {
 
 .floating-controls {
   position: absolute;
-  top: 14px;
+  bottom: 14px;
   left: 14px;
   z-index: 600;
   width: min(360px, calc(100% - 28px));
@@ -168,7 +168,7 @@ select {
   }
 
   .floating-controls {
-    top: 10px;
+    bottom: 10px;
     left: 10px;
     width: min(360px, calc(100% - 20px));
   }

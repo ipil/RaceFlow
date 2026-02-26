@@ -181,11 +181,9 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <h1>Race Route Visualizer</h1>
+        <h1>Race Flow Visualizer</h1>
 
         <div className="panel">
-          <h2>Race Flow Simulator</h2>
-
           <h3>Quick Start</h3>
           <ol>
             <li><strong>Choose a Map</strong> — select a sample course or upload a <code>.gpx</code> file.</li>
