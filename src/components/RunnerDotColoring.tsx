@@ -1,15 +1,15 @@
 type RunnerDotColoringProps = {
   densityRadiusMeters: number;
-  maxDensityColorValue: number;
+  thresholdRunnerDensity: number;
   onDensityRadiusChange: (radius: number) => void;
-  onMaxDensityColorValueChange: (value: number) => void;
+  onThresholdRunnerDensityChange: (value: number) => void;
 };
 
 export default function RunnerDotColoring({
   densityRadiusMeters,
-  maxDensityColorValue,
+  thresholdRunnerDensity,
   onDensityRadiusChange,
-  onMaxDensityColorValueChange,
+  onThresholdRunnerDensityChange,
 }: RunnerDotColoringProps) {
   return (
     <div className="panel">
@@ -27,15 +27,17 @@ export default function RunnerDotColoring({
         />
       </div>
       <div className="row">
-        <label htmlFor="max-density-color">Max density (number of runners)</label>
+        <label htmlFor="threshold-runner-density">
+          Threshold runner density (runners/m): {thresholdRunnerDensity}
+        </label>
         <input
-          id="max-density-color"
-          type="number"
-          min={1}
-          max={200}
+          id="threshold-runner-density"
+          type="range"
+          min={0}
+          max={20}
           step={1}
-          value={maxDensityColorValue}
-          onChange={(e) => onMaxDensityColorValueChange(Number(e.target.value))}
+          value={thresholdRunnerDensity}
+          onChange={(e) => onThresholdRunnerDensityChange(Number(e.target.value))}
         />
       </div>
     </div>

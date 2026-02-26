@@ -76,8 +76,8 @@ export default function RouteCongestionStats({
           <input
             id="avg-red-threshold"
             type="range"
-            min={1}
-            max={500}
+            min={0}
+            max={100}
             step={1}
             value={averageRedThreshold}
             onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
@@ -86,12 +86,14 @@ export default function RouteCongestionStats({
       )}
       {heatMetric === 'max' && (
         <div className="row">
-          <label htmlFor="max-red-threshold">Maximum density red value: {maxRedThreshold}</label>
+          <label htmlFor="max-red-threshold">
+            Threshold segment density (runners/m): {maxRedThreshold}
+          </label>
           <input
             id="max-red-threshold"
             type="range"
-            min={1}
-            max={500}
+            min={0}
+            max={20}
             step={1}
             value={maxRedThreshold}
             onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}

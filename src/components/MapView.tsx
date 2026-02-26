@@ -17,7 +17,7 @@ type MapViewProps = {
   simTime: number;
   playing: boolean;
   densityRadiusMeters: number;
-  maxDensityColorValue: number;
+  thresholdRunnerDensity: number;
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
   showRouteHeatmap: boolean;
@@ -39,7 +39,7 @@ export default function MapView({
   simTime,
   playing,
   densityRadiusMeters,
-  maxDensityColorValue,
+  thresholdRunnerDensity,
   segmentLengthMeters,
   heatMetric,
   showRouteHeatmap,
@@ -331,7 +331,7 @@ export default function MapView({
       for (let i = 0; i < runnerCount; i += 1) {
         const pt = map.latLngToContainerPoint([lats[i], lngs[i]]);
         const lowDensity = invDensityRadius;
-        const highDensity = maxDensityColorValue * invDensityRadius;
+        const highDensity = thresholdRunnerDensity;
         const denom = Math.max(1e-6, highDensity - lowDensity);
         const norm = (densityPerRunner[i] - lowDensity) / denom;
 
@@ -348,7 +348,7 @@ export default function MapView({
     simTime,
     playing,
     densityRadiusMeters,
-    maxDensityColorValue,
+    thresholdRunnerDensity,
     segmentLengthMeters,
     segmentCount,
     segmentBreakpoints,
@@ -384,8 +384,8 @@ export default function MapView({
         <div><strong>Runner Density</strong></div>
         <div className="legend-bar" />
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>1 runner</span>
-          <span>{maxDensityColorValue} runners</span>
+          <span>{(1 / Math.max(1e-6, densityRadiusMeters)).toFixed(2)} runners/m</span>
+          <span>{thresholdRunnerDensity} runners/m</span>
         </div>
       </div>
     </div>

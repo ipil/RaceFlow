@@ -65,7 +65,7 @@ export default function App() {
     DEFAULT_MAP_OPTIONS[0].url,
   );
   const [densityRadiusMeters, setDensityRadiusMeters] = useState(15);
-  const [maxDensityColorValue, setMaxDensityColorValue] = useState(20);
+  const [thresholdRunnerDensity, setThresholdRunnerDensity] = useState(2);
   const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
   const [heatMetric, setHeatMetric] = useState<'average' | 'max'>('average');
   const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
@@ -224,8 +224,8 @@ export default function App() {
             <strong>4. Configure the Density Visualization</strong><br />
             For purposes of color-coding the dots, the parameter Density radius (m) represents the
             radius (in meters) of the area around each runner in which the number of neighboring
-            runners is counted. The parameter Max density (number of runners) represents the
-            (smallest) number of runners in the area for which the dot color will be red. Play
+            runners is counted. The parameter Threshold runner density (runners/m) represents the
+            (smallest) local density for which the dot color will be red. Play
             around with these values to get a good visualization. The default values are a good
             starting point, at least for the default maps.
           </p>
@@ -281,14 +281,14 @@ export default function App() {
 
         <RunnerDotColoring
           densityRadiusMeters={densityRadiusMeters}
-          maxDensityColorValue={maxDensityColorValue}
+          thresholdRunnerDensity={thresholdRunnerDensity}
           onDensityRadiusChange={(radius) => {
             if (!Number.isFinite(radius)) return;
             setDensityRadiusMeters(Math.max(2, Math.min(20, Math.round(radius))));
           }}
-          onMaxDensityColorValueChange={(value) => {
+          onThresholdRunnerDensityChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setMaxDensityColorValue(Math.max(1, Math.min(200, Math.round(value))));
+            setThresholdRunnerDensity(Math.max(0, Math.min(20, Math.round(value))));
           }}
         />
 
@@ -306,11 +306,11 @@ export default function App() {
           onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
           onAverageRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setAverageRedThreshold(Math.max(1, Math.min(500, Math.round(value))));
+            setAverageRedThreshold(Math.max(0, Math.min(100, Math.round(value))));
           }}
           onMaxRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setMaxRedThreshold(Math.max(1, Math.min(500, Math.round(value))));
+            setMaxRedThreshold(Math.max(0, Math.min(100, Math.round(value))));
           }}
         />
 
@@ -327,7 +327,7 @@ export default function App() {
         simTime={simTime}
         playing={playing}
         densityRadiusMeters={densityRadiusMeters}
-        maxDensityColorValue={maxDensityColorValue}
+        thresholdRunnerDensity={thresholdRunnerDensity}
         segmentLengthMeters={segmentLengthMeters}
         heatMetric={heatMetric}
         showRouteHeatmap={showRouteHeatmap}
