@@ -249,6 +249,11 @@ export default function App() {
     [courses],
   );
 
+  const mapCourses = useMemo(
+    () => courses.map((c) => ({ id: c.id, routeData: c.routeData, runners: c.runners })),
+    [courses],
+  );
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -376,7 +381,7 @@ export default function App() {
 
       <div className="map-pane">
         <MapView
-          courses={courses.map((c) => ({ id: c.id, routeData: c.routeData, runners: c.runners }))}
+          courses={mapCourses}
           simTime={simTime}
           playing={playing}
           densityRadiusMeters={densityRadiusMeters}

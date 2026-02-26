@@ -409,10 +409,14 @@ export default function MapView({
           const density = countSum / segmentLengthMeters;
           frameDensity[g] = density;
 
+          // Latch occupancy for persistent rendering once any runner has been in this segment.
+          if (density > 0) {
+            seen[g] = 1;
+          }
+
           if (isForwardStep) {
             frameCount[g] += 1;
             if (density > 0) {
-              seen[g] = 1;
               nonZeroSum[g] += density;
               nonZeroCount[g] += 1;
             }
@@ -435,12 +439,8 @@ export default function MapView({
 
         const drawOrder = [...geometry.entries];
         drawOrder.sort((a, b) => {
-          const va = heatMetric === 'average'
-            ? (avgValues[a.groupIdx] > 0 ? avgValues[a.groupIdx] : frameDensity[a.groupIdx])
-            : Math.max(maxDensity[a.groupIdx], frameDensity[a.groupIdx]);
-          const vb = heatMetric === 'average'
-            ? (avgValues[b.groupIdx] > 0 ? avgValues[b.groupIdx] : frameDensity[b.groupIdx])
-            : Math.max(maxDensity[b.groupIdx], frameDensity[b.groupIdx]);
+          const va = heatMetric === 'average' ? avgValues[a.groupIdx] : maxDensity[a.groupIdx];
+          const vb = heatMetric === 'average' ? avgValues[b.groupIdx] : maxDensity[b.groupIdx];
           return va - vb;
         });
 
@@ -448,12 +448,9 @@ export default function MapView({
         ctx.lineCap = 'round';
         for (let i = 0; i < drawOrder.length; i += 1) {
           const seg = drawOrder[i];
-          const groupSeen = seen[seg.groupIdx] === 1 || frameDensity[seg.groupIdx] > 0;
-          if (!groupSeen) continue;
+          if (seen[seg.groupIdx] === 0) continue;
 
-          const value = heatMetric === 'average'
-            ? (avgValues[seg.groupIdx] > 0 ? avgValues[seg.groupIdx] : frameDensity[seg.groupIdx])
-            : Math.max(maxDensity[seg.groupIdx], frameDensity[seg.groupIdx]);
+          const value = heatMetric === 'average' ? avgValues[seg.groupIdx] : maxDensity[seg.groupIdx];
           const norm = value / denom;
 
           const pt0 = map.latLngToContainerPoint([seg.p0.lat, seg.p0.lng]);
@@ -466,40 +463,6 @@ export default function MapView({
           ctx.stroke();
         }
       }
-
-      let seenCount = 0;
-      let framePositiveCount = 0;
-      let maxFrameDensityVal = 0;
-      let maxAvgVal = 0;
-      let maxHistVal = 0;
-      for (let g = 0; g < geometry.groupCount; g += 1) {
-        if (seen[g] === 1) seenCount += 1;
-        if (frameDensity[g] > 0) framePositiveCount += 1;
-        if (frameDensity[g] > maxFrameDensityVal) maxFrameDensityVal = frameDensity[g];
-        if (avgValues[g] > maxAvgVal) maxAvgVal = avgValues[g];
-        if (maxDensity[g] > maxHistVal) maxHistVal = maxDensity[g];
-      }
-
-      ctx.save();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillRect(10, 10, 350, 128);
-      ctx.strokeStyle = 'rgba(15,23,42,0.35)';
-      ctx.strokeRect(10, 10, 350, 128);
-      ctx.fillStyle = '#0f172a';
-      ctx.font = '12px Menlo, Consolas, monospace';
-      const debugLines = [
-        `debug: showHeatmap=${showRouteHeatmap} metric=${heatMetric}`,
-        `courses=${courses.length} runners=${activeRunnerCount}`,
-        `segments entries=${geometry.entries.length} groups=${geometry.groupCount}`,
-        `seenGroups=${seenCount} framePositiveGroups=${framePositiveCount}`,
-        `max frame dens=${maxFrameDensityVal.toFixed(3)} runners/m`,
-        `max avg dens=${maxAvgVal.toFixed(3)} max hist dens=${maxHistVal.toFixed(3)}`,
-      ];
-      for (let i = 0; i < debugLines.length; i += 1) {
-        ctx.fillText(debugLines[i], 18, 28 + i * 18);
-      }
-      ctx.restore();
 
       ctx.globalAlpha = 0.92;
       const lowDensity = invDensityRadius;
