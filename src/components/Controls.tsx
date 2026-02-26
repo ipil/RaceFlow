@@ -11,7 +11,7 @@ type ControlsProps = {
   onSpeedChange: (speed: number) => void;
 };
 
-const SPEEDS = [10, 15, 20, 30, 50, 100];
+const SPEEDS = [10, 15, 20, 30, 50, 100, 500];
 
 function formatTime(tSec: number): string {
   const total = Math.max(0, Math.floor(tSec));

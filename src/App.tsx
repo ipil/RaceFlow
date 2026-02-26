@@ -68,6 +68,9 @@ export default function App() {
   const [thresholdRunnerDensity, setThresholdRunnerDensity] = useState(2);
   const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
   const [heatMetric, setHeatMetric] = useState<'average' | 'max'>('average');
+  const [averageMode, setAverageMode] = useState<'active_avg' | 'p90' | 'top30' | 'window'>(
+    'active_avg',
+  );
   const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
   const [averageRedThreshold, setAverageRedThreshold] = useState(20);
   const [maxRedThreshold, setMaxRedThreshold] = useState(20);
@@ -260,8 +263,6 @@ export default function App() {
           {error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{error}</div>}
         </div>
 
-        <WaveEditor waves={waves} setWaves={setWaves} />
-
         <Controls
           simTime={simTime}
           maxTime={maxTime}
@@ -279,6 +280,8 @@ export default function App() {
           onSpeedChange={(s) => setSpeed(s)}
         />
 
+        <WaveEditor waves={waves} setWaves={setWaves} />
+
         <RunnerDotColoring
           densityRadiusMeters={densityRadiusMeters}
           thresholdRunnerDensity={thresholdRunnerDensity}
@@ -295,6 +298,7 @@ export default function App() {
         <RouteCongestionStats
           segmentLengthMeters={segmentLengthMeters}
           heatMetric={heatMetric}
+          averageMode={averageMode}
           showRouteHeatmap={showRouteHeatmap}
           averageRedThreshold={averageRedThreshold}
           maxRedThreshold={maxRedThreshold}
@@ -303,14 +307,15 @@ export default function App() {
             setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
           }}
           onHeatMetricChange={(value) => setHeatMetric(value)}
+          onAverageModeChange={(value) => setAverageMode(value)}
           onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
           onAverageRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setAverageRedThreshold(Math.max(0, Math.min(100, Math.round(value))));
+            setAverageRedThreshold(Math.max(0, Math.min(20, value)));
           }}
           onMaxRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setMaxRedThreshold(Math.max(0, Math.min(100, Math.round(value))));
+            setMaxRedThreshold(Math.max(0, Math.min(20, value)));
           }}
         />
 
@@ -330,6 +335,7 @@ export default function App() {
         thresholdRunnerDensity={thresholdRunnerDensity}
         segmentLengthMeters={segmentLengthMeters}
         heatMetric={heatMetric}
+        averageMode={averageMode}
         showRouteHeatmap={showRouteHeatmap}
         averageRedThreshold={averageRedThreshold}
         maxRedThreshold={maxRedThreshold}
