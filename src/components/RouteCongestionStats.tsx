@@ -1,12 +1,12 @@
+import CollapsiblePanel from './CollapsiblePanel';
+
 type RouteCongestionStatsProps = {
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
-  showRouteHeatmap: boolean;
   averageRedThreshold: number;
   maxRedThreshold: number;
   onSegmentLengthChange: (value: number) => void;
   onHeatMetricChange: (value: 'average' | 'max') => void;
-  onShowRouteHeatmapChange: (value: boolean) => void;
   onAverageRedThresholdChange: (value: number) => void;
   onMaxRedThresholdChange: (value: number) => void;
 };
@@ -14,27 +14,15 @@ type RouteCongestionStatsProps = {
 export default function RouteCongestionStats({
   segmentLengthMeters,
   heatMetric,
-  showRouteHeatmap,
   averageRedThreshold,
   maxRedThreshold,
   onSegmentLengthChange,
   onHeatMetricChange,
-  onShowRouteHeatmapChange,
   onAverageRedThresholdChange,
   onMaxRedThresholdChange,
 }: RouteCongestionStatsProps) {
   return (
-    <div className="panel">
-      <h2>Route Congestion Stats</h2>
-      <div className="row">
-        <label htmlFor="show-route-heatmap">Show route segment heat map</label>
-        <input
-          id="show-route-heatmap"
-          type="checkbox"
-          checked={showRouteHeatmap}
-          onChange={(e) => onShowRouteHeatmapChange(e.target.checked)}
-        />
-      </div>
+    <CollapsiblePanel title="Route-Centric Density Parameters">
       <div className="row">
         <label htmlFor="segment-length">Segment length (m)</label>
         <input
@@ -102,6 +90,6 @@ export default function RouteCongestionStats({
           />
         </div>
       )}
-    </div>
+    </CollapsiblePanel>
   );
 }

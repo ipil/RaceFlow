@@ -1,3 +1,5 @@
+import CollapsiblePanel from './CollapsiblePanel';
+
 type RunnerDotColoringProps = {
   densityRadiusMeters: number;
   thresholdRunnerDensity: number;
@@ -12,8 +14,7 @@ export default function RunnerDotColoring({
   onThresholdRunnerDensityChange,
 }: RunnerDotColoringProps) {
   return (
-    <div className="panel">
-      <h2>Runner dot coloring</h2>
+    <CollapsiblePanel title="Runner-Centric Denstiy Parameters">
       <div className="row">
         <label htmlFor="density-radius">Density radius (m)</label>
         <input
@@ -40,6 +41,6 @@ export default function RunnerDotColoring({
           onChange={(e) => onThresholdRunnerDensityChange(Number(e.target.value))}
         />
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 }

@@ -1,14 +1,17 @@
 import { useMemo } from 'react';
+import CollapsiblePanel from './CollapsiblePanel';
 
 type ControlsProps = {
   simTime: number;
   maxTime: number;
   playing: boolean;
   speed: number;
+  showRouteHeatmap: boolean;
   onPlayPause: () => void;
   onReset: () => void;
   onTimeChange: (time: number) => void;
   onSpeedChange: (speed: number) => void;
+  onShowRouteHeatmapChange: (value: boolean) => void;
 };
 
 const SPEEDS = [10, 15, 20, 30, 50, 100, 500];
@@ -26,16 +29,17 @@ export default function Controls({
   maxTime,
   playing,
   speed,
+  showRouteHeatmap,
   onPlayPause,
   onReset,
   onTimeChange,
   onSpeedChange,
+  onShowRouteHeatmapChange,
 }: ControlsProps) {
   const timeLabel = useMemo(() => formatTime(simTime), [simTime]);
 
   return (
-    <div className="panel">
-      <h2>Simulation Controls</h2>
+    <CollapsiblePanel title="Simulation Controls">
       <div className="row">
         <button type="button" onClick={onPlayPause}>
           {playing ? 'Pause' : 'Play'}
@@ -73,6 +77,15 @@ export default function Controls({
           ))}
         </select>
       </div>
-    </div>
+      <div className="row">
+        <label htmlFor="show-route-heatmap">Display route-centric density heat map</label>
+        <input
+          id="show-route-heatmap"
+          type="checkbox"
+          checked={showRouteHeatmap}
+          onChange={(e) => onShowRouteHeatmapChange(e.target.checked)}
+        />
+      </div>
+    </CollapsiblePanel>
   );
 }

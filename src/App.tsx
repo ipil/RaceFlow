@@ -5,6 +5,7 @@ import WaveEditor from './components/WaveEditor';
 import Controls from './components/Controls';
 import RouteCongestionStats from './components/RouteCongestionStats';
 import RunnerDotColoring from './components/RunnerDotColoring';
+import CollapsiblePanel from './components/CollapsiblePanel';
 import {
   buildCumulativeDistances,
   parseGpxToLatLngs,
@@ -183,7 +184,7 @@ export default function App() {
       <aside className="sidebar">
         <h1>Race Flow Visualizer</h1>
 
-        <div className="panel">
+        <CollapsiblePanel title="README">
           <h3>Quick Start</h3>
           <ol>
             <li><strong>Choose a Map</strong> — select a sample course or upload a <code>.gpx</code> file.</li>
@@ -276,10 +277,9 @@ export default function App() {
             The tool is most useful for identifying undesirable congestion, such as congestion
             occurring in narrow, constrained, or highly curved portions of a course.
           </p>
-        </div>
+        </CollapsiblePanel>
 
-        <div className="panel">
-          <h2>Route</h2>
+        <CollapsiblePanel title="Route">
           <div className="row">
             <label htmlFor="gpx-upload">Upload GPX</label>
             <input id="gpx-upload" type="file" accept=".gpx,application/gpx+xml" onChange={onUploadFile} />
@@ -305,7 +305,7 @@ export default function App() {
             Route length: {routeData ? `${routeData.total.toFixed(0)} m` : 'No route loaded'}
           </div>
           {error && <div style={{ color: '#b91c1c', marginTop: 6 }}>{error}</div>}
-        </div>
+        </CollapsiblePanel>
 
         <WaveEditor waves={waves} setWaves={setWaves} />
 
@@ -325,7 +325,6 @@ export default function App() {
         <RouteCongestionStats
           segmentLengthMeters={segmentLengthMeters}
           heatMetric={heatMetric}
-          showRouteHeatmap={showRouteHeatmap}
           averageRedThreshold={averageRedThreshold}
           maxRedThreshold={maxRedThreshold}
           onSegmentLengthChange={(value) => {
@@ -333,7 +332,6 @@ export default function App() {
             setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
           }}
           onHeatMetricChange={(value) => setHeatMetric(value)}
-          onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
           onAverageRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
             setAverageRedThreshold(Math.max(0, Math.min(10, value)));
@@ -344,11 +342,10 @@ export default function App() {
           }}
         />
 
-        <div className="panel">
-          <h2>Status</h2>
+        <CollapsiblePanel title="Status">
           <div>Waves: {waves.length}</div>
           <div>Runners: {runners.length}</div>
-        </div>
+        </CollapsiblePanel>
       </aside>
 
       <div className="map-pane">
@@ -381,6 +378,8 @@ export default function App() {
               setSimTime(Math.max(0, Math.min(maxTime, t)));
             }}
             onSpeedChange={(s) => setSpeed(s)}
+            showRouteHeatmap={showRouteHeatmap}
+            onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
           />
         </div>
       </div>

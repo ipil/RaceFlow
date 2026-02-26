@@ -53,6 +53,29 @@ select {
   font-size: 1rem;
 }
 
+.collapsible-panel summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+}
+
+.collapsible-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-panel summary h2 {
+  margin: 0;
+}
+
+.collapsible-panel .collapsible-body {
+  margin-top: 8px;
+}
+
+.collapsible-panel:not([open]) .collapsible-body {
+  display: none;
+}
+
 .row {
   display: flex;
   gap: 8px;

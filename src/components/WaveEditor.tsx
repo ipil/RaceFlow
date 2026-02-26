@@ -1,4 +1,5 @@
 import type { Wave } from '../sim/sim';
+import CollapsiblePanel from './CollapsiblePanel';
 
 type WaveEditorProps = {
   waves: Wave[];
@@ -52,16 +53,15 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
   };
 
   return (
-    <div className="panel">
-      <h2>Wave Editor</h2>
+    <CollapsiblePanel title="Wave Editor">
       <div className="waves-list">
-        {waves.map((wave) => {
+        {waves.map((wave, index) => {
           const minPace = secPerKmToMinMile(wave.minPaceSecPerKm);
           const maxPace = secPerKmToMinMile(wave.maxPaceSecPerKm);
 
           return (
             <div key={wave.id} className="wave-card">
-              <strong>{wave.id}</strong>
+              <strong>Wave {index + 1}</strong>
             <div className="row">
               <label>Start (min)</label>
               <input
@@ -199,6 +199,6 @@ export default function WaveEditor({ waves, setWaves }: WaveEditorProps) {
           Add wave
         </button>
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 }
