@@ -34,7 +34,7 @@ export default function RunnerDotColoring({
           id="threshold-runner-density"
           type="range"
           min={0}
-          max={20}
+          max={10}
           step={1}
           value={thresholdRunnerDensity}
           onChange={(e) => onThresholdRunnerDensityChange(Number(e.target.value))}

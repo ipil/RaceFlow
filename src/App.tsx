@@ -68,9 +68,6 @@ export default function App() {
   const [thresholdRunnerDensity, setThresholdRunnerDensity] = useState(2);
   const [segmentLengthMeters, setSegmentLengthMeters] = useState(5);
   const [heatMetric, setHeatMetric] = useState<'average' | 'max'>('average');
-  const [averageMode, setAverageMode] = useState<'active_avg' | 'p90' | 'top30' | 'window'>(
-    'active_avg',
-  );
   const [showRouteHeatmap, setShowRouteHeatmap] = useState(true);
   const [averageRedThreshold, setAverageRedThreshold] = useState(1.5);
   const [maxRedThreshold, setMaxRedThreshold] = useState(1.5);
@@ -187,50 +184,109 @@ export default function App() {
         <h1>Race Route Visualizer</h1>
 
         <div className="panel">
+          <h2>Race Flow Simulator</h2>
+
+          <h3>Quick Start (30 seconds)</h3>
+          <ol>
+            <li><strong>Choose a Map</strong> — select a sample course or upload a <code>.gpx</code> file.</li>
+            <li><strong>Add Starting Waves</strong> — define when runners start and their pace ranges.</li>
+            <li><strong>Press Play</strong> — watch congestion evolve along the course.</li>
+          </ol>
+          <p>Each dot represents a runner.<br />Dot color indicates <strong>local runner density</strong>.</p>
+
+          <hr />
+
+          <h3>What This Tool Simulates</h3>
           <p>
-            This program simulates a flow of runners through a race course to visualize points of
-            congestion along the course. Each dot represents a runner, and the color of each dot
-            represents the number of runners within a selected radius of the dot at every point in
-            time.
+            The simulator models runners progressing along a race course over time.
+            Each runner is assigned a pace randomly sampled from the pace range of its starting wave.
           </p>
-          <p><strong>To use the tool:</strong></p>
+          <p>Two complementary congestion views are available:</p>
+          <ul>
+            <li><strong>Runner-centric density</strong> — crowding experienced by individual runners.</li>
+            <li><strong>Route-centric density</strong> — congestion patterns along the course itself.</li>
+          </ul>
+
+          <hr />
+
+          <h3>Core Concepts</h3>
+          <h4>Runner Density</h4>
+          <p>Runner density measures how crowded an area is.</p>
+          <p>For a given runner:</p>
+          <ul>
+            <li>a circular neighborhood is defined using a selectable <strong>density radius</strong></li>
+            <li>nearby runners inside that radius are counted</li>
+            <li>dot color represents the resulting number density</li>
+          </ul>
+          <p>Higher density corresopnds to warmer colors.</p>
+
+          <h4>Starting Waves</h4>
+          <p>Each starting wave specifies:</p>
+          <ul>
+            <li>start time</li>
+            <li>number of runners</li>
+            <li>fastest and slowest pace</li>
+          </ul>
+          <p>Each runner&apos;s pace is randomly drawn from the wave&apos;s pace range.</p>
+
+          <hr />
+
+          <h3>Controls Reference</h3>
+          <h4>Map Selection</h4>
+          <p>Load an example course or upload a <code>.gpx</code> route.</p>
+
+          <hr />
+
+          <h4>Simulation Speed</h4>
+          <p>Controls how quickly simulated race time advances.<br />Default: <strong>20× real time</strong>.</p>
+
+          <hr />
+
+          <h4>Runner Dot Coloring (Runner-Centric View)</h4>
+          <ul>
+            <li>
+              <strong>Density radius (m)</strong><br />
+              Radius used to count neighboring runners.
+            </li>
+            <li>
+              <strong>Threshold runner density</strong><br />
+              Minimum density mapped to the maximum (red) color.
+            </li>
+          </ul>
+          <p>Adjust these parameters to highlight different congestion scales.</p>
+
+          <hr />
+
+          <h4>Route Congestion Stats (Route-Centric View)</h4>
+          <p>Enable the heat map to analyze congestion along the course.</p>
+          <p>The route is divided into segments of configurable length.</p>
+          <p><strong>Visualization modes</strong></p>
+          <ul>
+            <li>
+              <strong>Average Density</strong><br />
+              Mean runner density across all frames in which runners occupy a segment.
+            </li>
+            <li>
+              <strong>Maximum Density</strong><br />
+              Highest density observed in a segment up to the current simulation time.
+            </li>
+          </ul>
           <p>
-            <strong>1. Choose a Map</strong><br />
-            Feel free to select an example course map from the drop-down menu or upload your own
-            map as a .gpx file.
+            <strong>Threshold segment density</strong><br />
+            Minimum density mapped to the maximum (red) segment color.
+          </p>
+
+          <hr />
+
+          <h3>Interpreting Results</h3>
+          <p>
+            Out-and-back sections naturally exhibit higher measured densities because runners occupy
+            the same physical corridor in opposing directions. High density in these regions is not
+            necessarily problematic.
           </p>
           <p>
-            <strong>2. Configure the Starting Waves</strong><br />
-            You can add any number of starting waves of runners, each of which can start at any
-            time and can have any number of runners.
-          </p>
-          <p>
-            Each wave is characterized by a fastest pace and a slowest pace; for example, a first
-            wave may be faster than 8:30/mile and a second wave may be between 8:31/mile and
-            11:00/mile.
-          </p>
-          <p>
-            In each wave, each runner&apos;s pace is randomly selected from the paces in the
-            corresponding range of paces.
-          </p>
-          <p>
-            The default waves represent the waves used in the 2026 Heart to Start 5k race in
-            Tigard, Oregon. The defaul numbers of runners in each wave are the numbers of race
-            finishers from that race with final paces in each wave pace interval.
-          </p>
-          <p>
-            <strong>3. Select a Simulation Speed</strong><br />
-            By default, the simulation proceeds at 20x real-time speed. Feel free to adjust this
-            as desired.
-          </p>
-          <p>
-            <strong>4. Configure the Density Visualization</strong><br />
-            For purposes of color-coding the dots, the parameter Density radius (m) represents the
-            radius (in meters) of the area around each runner in which the number of neighboring
-            runners is counted. The parameter Threshold runner density (runners/m) represents the
-            (smallest) local density for which the dot color will be red. Play
-            around with these values to get a good visualization. The default values are a good
-            starting point, at least for the default maps.
+            The tool is most useful for identifying <em>undesirable congestion</em> — especially in
+            narrow, constrained, or highly curved portions of a course.
           </p>
         </div>
 
@@ -291,14 +347,13 @@ export default function App() {
           }}
           onThresholdRunnerDensityChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setThresholdRunnerDensity(Math.max(0, Math.min(20, Math.round(value))));
+            setThresholdRunnerDensity(Math.max(0, Math.min(10, Math.round(value))));
           }}
         />
 
         <RouteCongestionStats
           segmentLengthMeters={segmentLengthMeters}
           heatMetric={heatMetric}
-          averageMode={averageMode}
           showRouteHeatmap={showRouteHeatmap}
           averageRedThreshold={averageRedThreshold}
           maxRedThreshold={maxRedThreshold}
@@ -307,15 +362,14 @@ export default function App() {
             setSegmentLengthMeters(Math.max(1, Math.min(100, Math.round(value))));
           }}
           onHeatMetricChange={(value) => setHeatMetric(value)}
-          onAverageModeChange={(value) => setAverageMode(value)}
           onShowRouteHeatmapChange={(value) => setShowRouteHeatmap(value)}
           onAverageRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setAverageRedThreshold(Math.max(0, Math.min(20, value)));
+            setAverageRedThreshold(Math.max(0, Math.min(10, value)));
           }}
           onMaxRedThresholdChange={(value) => {
             if (!Number.isFinite(value)) return;
-            setMaxRedThreshold(Math.max(0, Math.min(20, value)));
+            setMaxRedThreshold(Math.max(0, Math.min(10, value)));
           }}
         />
 
@@ -335,7 +389,6 @@ export default function App() {
         thresholdRunnerDensity={thresholdRunnerDensity}
         segmentLengthMeters={segmentLengthMeters}
         heatMetric={heatMetric}
-        averageMode={averageMode}
         showRouteHeatmap={showRouteHeatmap}
         averageRedThreshold={averageRedThreshold}
         maxRedThreshold={maxRedThreshold}

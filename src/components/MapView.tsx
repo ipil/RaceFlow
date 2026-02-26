@@ -20,7 +20,6 @@ type MapViewProps = {
   thresholdRunnerDensity: number;
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
-  averageMode: 'active_avg' | 'p90' | 'top30' | 'window';
   showRouteHeatmap: boolean;
   averageRedThreshold: number;
   maxRedThreshold: number;
@@ -43,7 +42,6 @@ export default function MapView({
   thresholdRunnerDensity,
   segmentLengthMeters,
   heatMetric,
-  averageMode,
   showRouteHeatmap,
   averageRedThreshold,
   maxRedThreshold,
@@ -66,22 +64,10 @@ export default function MapView({
   const segmentSeenRef = useRef<Uint8Array>(new Uint8Array(0));
   const segmentNonZeroSumRef = useRef<Float64Array>(new Float64Array(0));
   const segmentNonZeroCountRef = useRef<Uint32Array>(new Uint32Array(0));
-  const segmentWindowSumRef = useRef<Float64Array>(new Float64Array(0));
-  const segmentWindowCountRef = useRef<Uint32Array>(new Uint32Array(0));
-  const segmentHistCountsRef = useRef<Uint32Array>(new Uint32Array(0));
-  const segmentHistTotalNonZeroRef = useRef<Uint32Array>(new Uint32Array(0));
-  const windowSamplesRef = useRef<Array<{ t: number; values: Float32Array }>>([]);
-  const lastSampleSimTimeRef = useRef(0);
   const groupValueRef = useRef<Float32Array>(new Float32Array(0));
   const groupSeenRef = useRef<Uint8Array>(new Uint8Array(0));
   const lastTrackedSimTimeRef = useRef(0);
   const avgModeValueRef = useRef<Float32Array>(new Float32Array(0));
-
-  const HIST_BIN_WIDTH = 0.25;
-  const HIST_MAX_VALUE = 50;
-  const HIST_BIN_COUNT = Math.floor(HIST_MAX_VALUE / HIST_BIN_WIDTH) + 1;
-  const WINDOW_SECONDS = 180;
-  const SAMPLE_INTERVAL_SECONDS = 1;
 
   const segmentCount = routeData ? Math.max(1, Math.ceil(routeData.total / segmentLengthMeters)) : 0;
   const segmentBreakpoints = useMemo(() => {
@@ -132,13 +118,7 @@ export default function MapView({
     segmentSeenRef.current = new Uint8Array(segmentCount);
     segmentNonZeroSumRef.current = new Float64Array(segmentCount);
     segmentNonZeroCountRef.current = new Uint32Array(segmentCount);
-    segmentWindowSumRef.current = new Float64Array(segmentCount);
-    segmentWindowCountRef.current = new Uint32Array(segmentCount);
-    segmentHistCountsRef.current = new Uint32Array(segmentCount * HIST_BIN_COUNT);
-    segmentHistTotalNonZeroRef.current = new Uint32Array(segmentCount);
-    windowSamplesRef.current = [];
     avgModeValueRef.current = new Float32Array(segmentCount);
-    lastSampleSimTimeRef.current = 0;
     lastTrackedSimTimeRef.current = 0;
   }, [routeData, segmentLengthMeters, runners, segmentCount]);
 
@@ -230,11 +210,6 @@ export default function MapView({
       const segmentSeen = segmentSeenRef.current;
       const segmentNonZeroSum = segmentNonZeroSumRef.current;
       const segmentNonZeroCount = segmentNonZeroCountRef.current;
-      const segmentWindowSum = segmentWindowSumRef.current;
-      const segmentWindowCount = segmentWindowCountRef.current;
-      const segmentHistCounts = segmentHistCountsRef.current;
-      const segmentHistTotalNonZero = segmentHistTotalNonZeroRef.current;
-      const windowSamples = windowSamplesRef.current;
       const avgModeValue = avgModeValueRef.current;
 
       for (let i = 0; i < runnerCount; i += 1) {
@@ -271,12 +246,6 @@ export default function MapView({
         segmentSeen.fill(0);
         segmentNonZeroSum.fill(0);
         segmentNonZeroCount.fill(0);
-        segmentWindowSum.fill(0);
-        segmentWindowCount.fill(0);
-        segmentHistCounts.fill(0);
-        segmentHistTotalNonZero.fill(0);
-        windowSamplesRef.current = [];
-        lastSampleSimTimeRef.current = 0;
       }
       if (playing && segmentCount > 0) {
         segmentTmpCount.fill(0);
@@ -304,40 +273,6 @@ export default function MapView({
             segmentMaxDensity[i] = frameDensity;
           }
         }
-
-        const shouldSample =
-          simTime === 0 ||
-          simTime - lastSampleSimTimeRef.current >= SAMPLE_INTERVAL_SECONDS ||
-          lastSampleSimTimeRef.current === 0;
-        if (shouldSample) {
-          const snapshot = new Float32Array(segmentCount);
-          for (let i = 0; i < segmentCount; i += 1) {
-            const density = segmentTmpCount[i] / segmentLengthMeters;
-            snapshot[i] = density;
-            if (density > 0) {
-              segmentNonZeroSum[i] += density;
-              segmentNonZeroCount[i] += 1;
-              segmentWindowSum[i] += density;
-              segmentWindowCount[i] += 1;
-              segmentHistTotalNonZero[i] += 1;
-              const bin = Math.min(HIST_BIN_COUNT - 1, Math.floor(density / HIST_BIN_WIDTH));
-              segmentHistCounts[i * HIST_BIN_COUNT + bin] += 1;
-            }
-          }
-          windowSamples.push({ t: simTime, values: snapshot });
-          while (windowSamples.length > 0 && simTime - windowSamples[0].t > WINDOW_SECONDS) {
-            const oldest = windowSamples.shift();
-            if (!oldest) break;
-            for (let i = 0; i < segmentCount; i += 1) {
-              const density = oldest.values[i];
-              if (density > 0) {
-                segmentWindowSum[i] -= density;
-                segmentWindowCount[i] -= 1;
-              }
-            }
-          }
-          lastSampleSimTimeRef.current = simTime;
-        }
       }
       lastTrackedSimTimeRef.current = simTime;
 
@@ -347,48 +282,8 @@ export default function MapView({
             avgModeValue[i] = 0;
             continue;
           }
-          if (averageMode === 'active_avg') {
-            avgModeValue[i] =
-              segmentNonZeroCount[i] > 0 ? segmentNonZeroSum[i] / segmentNonZeroCount[i] : 0;
-            continue;
-          }
-          if (averageMode === 'window') {
-            avgModeValue[i] =
-              segmentWindowCount[i] > 0 ? segmentWindowSum[i] / segmentWindowCount[i] : 0;
-            continue;
-          }
-
-          const total = segmentHistTotalNonZero[i];
-          if (total === 0) {
-            avgModeValue[i] = 0;
-            continue;
-          }
-          const base = i * HIST_BIN_COUNT;
-
-          if (averageMode === 'p90') {
-            const target = Math.ceil(total * 0.9);
-            let cum = 0;
-            let binIdx = 0;
-            for (; binIdx < HIST_BIN_COUNT; binIdx += 1) {
-              cum += segmentHistCounts[base + binIdx];
-              if (cum >= target) break;
-            }
-            avgModeValue[i] = Math.min(HIST_MAX_VALUE, (binIdx + 0.5) * HIST_BIN_WIDTH);
-            continue;
-          }
-
-          const topCount = Math.max(1, Math.ceil(total * 0.3));
-          let remaining = topCount;
-          let sum = 0;
-          for (let binIdx = HIST_BIN_COUNT - 1; binIdx >= 0 && remaining > 0; binIdx -= 1) {
-            const c = segmentHistCounts[base + binIdx];
-            if (c === 0) continue;
-            const take = Math.min(remaining, c);
-            const binCenter = Math.min(HIST_MAX_VALUE, (binIdx + 0.5) * HIST_BIN_WIDTH);
-            sum += take * binCenter;
-            remaining -= take;
-          }
-          avgModeValue[i] = sum / topCount;
+          avgModeValue[i] =
+            segmentNonZeroCount[i] > 0 ? segmentNonZeroSum[i] / segmentNonZeroCount[i] : 0;
         }
       }
 
@@ -475,7 +370,6 @@ export default function MapView({
     segmentBreakpoints,
     segmentSpatialGroups,
     heatMetric,
-    averageMode,
     showRouteHeatmap,
     averageRedThreshold,
     maxRedThreshold,

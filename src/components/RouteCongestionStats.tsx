@@ -1,13 +1,11 @@
 type RouteCongestionStatsProps = {
   segmentLengthMeters: number;
   heatMetric: 'average' | 'max';
-  averageMode: 'active_avg' | 'p90' | 'top30' | 'window';
   showRouteHeatmap: boolean;
   averageRedThreshold: number;
   maxRedThreshold: number;
   onSegmentLengthChange: (value: number) => void;
   onHeatMetricChange: (value: 'average' | 'max') => void;
-  onAverageModeChange: (value: 'active_avg' | 'p90' | 'top30' | 'window') => void;
   onShowRouteHeatmapChange: (value: boolean) => void;
   onAverageRedThresholdChange: (value: number) => void;
   onMaxRedThresholdChange: (value: number) => void;
@@ -16,13 +14,11 @@ type RouteCongestionStatsProps = {
 export default function RouteCongestionStats({
   segmentLengthMeters,
   heatMetric,
-  averageMode,
   showRouteHeatmap,
   averageRedThreshold,
   maxRedThreshold,
   onSegmentLengthChange,
   onHeatMetricChange,
-  onAverageModeChange,
   onShowRouteHeatmapChange,
   onAverageRedThresholdChange,
   onMaxRedThresholdChange,
@@ -76,23 +72,6 @@ export default function RouteCongestionStats({
       </div>
       {heatMetric === 'average' && (
         <div className="row">
-          <label htmlFor="average-mode">Average density mode</label>
-          <select
-            id="average-mode"
-            value={averageMode}
-            onChange={(e) =>
-              onAverageModeChange(e.target.value as 'active_avg' | 'p90' | 'top30' | 'window')
-            }
-          >
-            <option value="active_avg">Active-time average</option>
-            <option value="p90">90th percentile (non-zero)</option>
-            <option value="top30">Top 30% mean (non-zero)</option>
-            <option value="window">Rolling window average</option>
-          </select>
-        </div>
-      )}
-      {heatMetric === 'average' && (
-        <div className="row">
           <label htmlFor="avg-red-threshold">
             Threshold segment density (runners/m): {averageRedThreshold}
           </label>
@@ -100,7 +79,7 @@ export default function RouteCongestionStats({
             id="avg-red-threshold"
             type="range"
             min={0}
-            max={20}
+            max={10}
             step={0.25}
             value={averageRedThreshold}
             onChange={(e) => onAverageRedThresholdChange(Number(e.target.value))}
@@ -116,7 +95,7 @@ export default function RouteCongestionStats({
             id="max-red-threshold"
             type="range"
             min={0}
-            max={20}
+            max={10}
             step={0.25}
             value={maxRedThreshold}
             onChange={(e) => onMaxRedThresholdChange(Number(e.target.value))}
